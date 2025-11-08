@@ -1,5 +1,5 @@
 {
-	"name": "claude-commit-vscode",
+	"name": "claude-commit",
 	"displayName": "Claude Commit",
 	"description": "AI-powered git commit message generator using Claude AI",
 	"version": "1.0.0",
