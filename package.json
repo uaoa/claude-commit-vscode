@@ -1,0 +1,108 @@
+{
+  "name": "claude-commit-vscode",
+  "displayName": "Claude Commit",
+  "description": "AI-powered git commit message generator using Claude AI",
+  "version": "1.0.0",
+  "publisher": "uaoa",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "commit",
+    "ai",
+    "claude",
+    "conventional-commits",
+    "anthropic"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claude-commit.generate",
+        "title": "Generate Commit Message",
+        "category": "Claude Commit",
+        "icon": "$(sparkle)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "claude-commit.generate",
+          "group": "navigation",
+          "when": "scmProvider == git"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Commit",
+      "properties": {
+        "claudeCommit.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key for Claude AI (optional if using Claude Code CLI)",
+          "order": 1
+        },
+        "claudeCommit.preferredMethod": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "cli",
+            "api"
+          ],
+          "default": "auto",
+          "description": "Preferred method for generating commits: auto (try CLI first, then API), cli (Claude Code CLI only), or api (Anthropic API only)",
+          "order": 2
+        },
+        "claudeCommit.language": {
+          "type": "string",
+          "enum": [
+            "en",
+            "ua"
+          ],
+          "default": "en",
+          "enumDescriptions": [
+            "English",
+            "Ukrainian"
+          ],
+          "description": "Language for commit messages",
+          "order": 3
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "eslint": "^8.50.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.68.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uaoa/claude-commit.git"
+  },
+  "author": {
+    "name": "Zakharii Melnyk",
+    "url": "https://github.com/uaoa",
+    "email": "contact@uaoa.dev"
+  },
+  "license": "MIT"
+}
