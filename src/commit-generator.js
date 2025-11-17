@@ -322,16 +322,18 @@ async function generateWithCLI(prompt) {
     // Екрануємо шлях для використання в shell
     const escapedCliPath = cliPath.includes(' ') ? `"${cliPath}"` : cliPath;
 
+    // Використовуємо -p (print) флаг для неінтерактивного режиму
+    // та --dangerously-skip-permissions для автоматичного виконання
     const command = process.platform === 'win32'
-        ? `echo ${prompt.replace(/"/g, '\\"')} | ${escapedCliPath}`
-        : `cat << 'CLAUDEPROMPT' | ${escapedCliPath}
+        ? `echo ${prompt.replace(/"/g, '\\"')} | ${escapedCliPath} -p`
+        : `cat << 'CLAUDEPROMPT' | ${escapedCliPath} -p --dangerously-skip-permissions
 ${prompt}
 CLAUDEPROMPT`;
 
     const { stdout } = await execAsync(command, {
         shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
         maxBuffer: 10 * 1024 * 1024,
-        timeout: 60000
+        timeout: 120000 // 2 хвилини для генерації
     });
 
     // Парсимо відповідь - шукаємо conventional commit
