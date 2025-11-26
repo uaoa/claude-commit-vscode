@@ -4,6 +4,7 @@ import {
   Language,
   ProgressCallback,
   GenerationMethod,
+  DiffSource,
 } from "../types";
 import { getDiff } from "../utils/git";
 import { createGenerationPrompt, createEditPrompt } from "../prompts/generation";
@@ -24,7 +25,10 @@ export async function generateCommitMessage(
     progressCallback("Getting git diff...");
   }
 
-  const { diff, stats } = await getDiff(repoPath);
+  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const diffSource = config.get<DiffSource>("diffSource", "auto");
+
+  const { diff, stats } = await getDiff(repoPath, diffSource);
 
   if (!diff && !stats) {
     throw new Error("No changes found. Stage some files first.");
@@ -34,7 +38,6 @@ export async function generateCommitMessage(
     progressCallback("Preparing prompt...");
   }
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
   const multiLine = config.get<boolean>("multiLineCommit", false);
 
   const prompt = createGenerationPrompt(diff, stats, language, multiLine);
@@ -137,7 +140,10 @@ export async function editCommitMessage(
     progressCallback("Getting git diff...");
   }
 
-  const { diff, stats } = await getDiff(repoPath);
+  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const diffSource = config.get<DiffSource>("diffSource", "auto");
+
+  const { diff, stats } = await getDiff(repoPath, diffSource);
 
   if (progressCallback) {
     progressCallback("Regenerating based on feedback...");
@@ -151,7 +157,6 @@ export async function editCommitMessage(
     language
   );
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
   const preferredMethod = config.get<GenerationMethod>("preferredMethod", "auto");
 
   if (preferredMethod === "cli" || preferredMethod === "auto") {

@@ -23,6 +23,7 @@ export interface ClaudeCommitConfig {
   model: "haiku" | "sonnet" | "opus";
   language: "en" | "ua";
   multiLineCommit: boolean;
+  diffSource: "staged" | "all" | "auto";
 }
 
 export type ProgressCallback = (message: string) => void;
@@ -32,3 +33,5 @@ export type Language = "en" | "ua";
 export type Model = "haiku" | "sonnet" | "opus";
 
 export type GenerationMethod = "auto" | "cli" | "api";
+
+export type DiffSource = "staged" | "all" | "auto";

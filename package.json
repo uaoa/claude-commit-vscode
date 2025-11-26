@@ -103,6 +103,22 @@
 					"default": false,
 					"description": "Generate detailed multi-line commits with body and footer (conventional commits extended format)",
 					"order": 6
+				},
+				"claudeCommit.diffSource": {
+					"type": "string",
+					"enum": [
+						"staged",
+						"all",
+						"auto"
+					],
+					"default": "auto",
+					"enumDescriptions": [
+						"Only use staged changes",
+						"Use all changes (staged + unstaged)",
+						"Use staged changes if available, otherwise use all changes"
+					],
+					"description": "Which changes to use for generating commit messages",
+					"order": 7
 				}
 			}
 		}
