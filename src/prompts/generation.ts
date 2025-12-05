@@ -15,9 +15,9 @@ export function createGenerationPrompt(
   return module.getGenerationPrompt(diff, stats, multiLine);
 }
 
-export function createManagedPrompt(lang: Language, keepCoAuthoredBy: boolean): string {
+export function createManagedPrompt(lang: Language, keepCoAuthoredBy: boolean, customPrompt: string): string {
   const module = promptModules[lang];
-  return module.getManagedPrompt(keepCoAuthoredBy);
+  return module.getManagedPrompt(keepCoAuthoredBy, customPrompt);
 }
 
 export function createEditPrompt(

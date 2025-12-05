@@ -31,6 +31,11 @@
 				"title": "Generate Commit Message",
 				"category": "Claude Commit",
 				"icon": "$(sparkle)"
+			},
+			{
+				"command": "claude-commit.generateWithCustomPrompt",
+				"title": "Generate Commit Message with Custom Prompt",
+				"category": "Claude Commit"
 			}
 		],
 		"menus": {

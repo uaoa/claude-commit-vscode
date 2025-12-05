@@ -63,8 +63,11 @@ docs(readme): 更新了安装说明
 仅返回 commit message（一行），不要有任何解释。`;
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean): string {
+export function getManagedPrompt(keepCoAuthoredBy: boolean, customPrompt: string): string {
   let prompt = `为当前改动生成git commit message，使用中文，仅输出commit message内容，不要有其他多余输出。`;
+  if (customPrompt) {
+    prompt += `\n\n额外要求：${customPrompt}`;
+  }
   if (keepCoAuthoredBy) {
     prompt += `
 

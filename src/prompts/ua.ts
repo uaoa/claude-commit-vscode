@@ -63,8 +63,11 @@ docs(readme): оновлено інструкції встановлення
 Поверни ТІЛЬКИ commit message (один рядок), без пояснень.`;
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean): string {
+export function getManagedPrompt(keepCoAuthoredBy: boolean, customPrompt: string): string {
   let prompt = `Згенеруй git commit message для поточних змін, українською мовою, лише commit message, без іншого тексту.`;
+  if (customPrompt) {
+    prompt += `\n\nДодаткові вимоги: ${customPrompt}`;
+  }
   if (keepCoAuthoredBy) {
     prompt += `
 

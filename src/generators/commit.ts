@@ -40,7 +40,7 @@ export async function generateCommitMessage(
     }
 
     const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
-    const prompt = createManagedPrompt(language, keepCoAuthoredBy);
+    const prompt = createManagedPrompt(language, keepCoAuthoredBy, "");
     return await generateWithCLIManaged(prompt, repoPath, progressCallback);
   }
 
@@ -145,6 +145,24 @@ export async function generateCommitMessage(
   throw new Error(
     "No generation method available. Install Claude Code CLI or set API key."
   );
+}
+
+export async function generateWithCustomPrompt(
+  repo: GitRepository,
+  customPrompt: string,
+  language: Language = "en",
+  progressCallback: ProgressCallback | null = null
+): Promise<string> {
+  const repoPath = repo.rootUri.fsPath;
+  const config = vscode.workspace.getConfiguration("claudeCommit");
+
+  if (progressCallback) {
+    progressCallback("Regenerating with custom prompt...");
+  }
+
+  const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
+  const prompt = createManagedPrompt(language, keepCoAuthoredBy, customPrompt);
+  return await generateWithCLIManaged(prompt, repoPath, progressCallback);
 }
 
 export async function editCommitMessage(

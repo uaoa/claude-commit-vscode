@@ -63,8 +63,11 @@ docs(readme): updated installation instructions
 Return ONLY the commit message (one line), no explanations.`;
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean): string {
+export function getManagedPrompt(keepCoAuthoredBy: boolean, customPrompt: string): string {
   let prompt = `Generate a git commit message for current changes, in English, output only the commit message, no other text.`;
+  if (customPrompt) {
+    prompt += `\n\nAdditional requirements: ${customPrompt}`;
+  }
   if (keepCoAuthoredBy) {
     prompt += `
 
