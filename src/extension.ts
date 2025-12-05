@@ -1,13 +1,80 @@
 import * as vscode from "vscode";
 import { generateCommitMessage, editCommitMessage, generateWithCustomPrompt } from "./generators/commit";
-import type { GitRepository, Language } from "./types";
+import type { GitRepository, GitAPI, Language } from "./types";
+
+/**
+ * Get the Git repository from a SourceControl object passed by VS Code
+ * when a command is triggered from the SCM title menu.
+ */
+function getRepositoryFromSourceControl(
+  git: GitAPI,
+  sourceControl: vscode.SourceControl | undefined
+): GitRepository | undefined {
+  if (!sourceControl || git.repositories.length === 0) {
+    return undefined;
+  }
+
+  // Match by rootUri - the SourceControl's rootUri should match the repository's rootUri
+  const scmRootUri = sourceControl.rootUri;
+  if (scmRootUri) {
+    for (const repo of git.repositories) {
+      if (repo.rootUri.fsPath === scmRootUri.fsPath) {
+        return repo;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Get the currently active Git repository based on:
+ * 1. SourceControl parameter from SCM menu (if provided)
+ * 2. The repository containing the currently active editor's file
+ * 3. Falls back to the first repository if neither is available
+ */
+function getActiveRepository(
+  git: GitAPI,
+  sourceControl?: vscode.SourceControl
+): GitRepository | undefined {
+  if (git.repositories.length === 0) {
+    return undefined;
+  }
+
+  // First priority: repository from SourceControl parameter (when triggered from SCM menu)
+  if (sourceControl) {
+    const repoFromSC = getRepositoryFromSourceControl(git, sourceControl);
+    if (repoFromSC) {
+      return repoFromSC;
+    }
+  }
+
+  if (git.repositories.length === 1) {
+    return git.repositories[0];
+  }
+
+  // Try to find repository based on currently active editor
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor) {
+    const activeFilePath = activeEditor.document.uri.fsPath;
+    for (const repo of git.repositories) {
+      const repoPath = repo.rootUri.fsPath;
+      if (activeFilePath.startsWith(repoPath)) {
+        return repo;
+      }
+    }
+  }
+
+  // Fallback to first repository
+  return git.repositories[0];
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   console.log("Claude Commit extension is now active");
 
   const generateCommit = vscode.commands.registerCommand(
     "claude-commit.generate",
-    async () => {
+    async (sourceControl?: vscode.SourceControl) => {
       try {
         const gitExtension = vscode.extensions.getExtension("vscode.git");
         if (!gitExtension) {
@@ -15,13 +82,17 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        const git = gitExtension.exports.getAPI(1);
+        const git = gitExtension.exports.getAPI(1) as GitAPI;
         if (git.repositories.length === 0) {
           vscode.window.showErrorMessage("No Git repository found");
           return;
         }
 
-        const repo = git.repositories[0] as GitRepository;
+        const repo = getActiveRepository(git, sourceControl);
+        if (!repo) {
+          vscode.window.showErrorMessage("No Git repository found");
+          return;
+        }
 
         // Skip change check in Claude Code managed mode (Claude Code will detect changes itself)
         const config = vscode.workspace.getConfiguration("claudeCommit");
@@ -113,7 +184,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const generateCommitWithCustomPrompt = vscode.commands.registerCommand(
     "claude-commit.generateWithCustomPrompt",
-    async () => {
+    async (sourceControl?: vscode.SourceControl) => {
       try {
         const gitExtension = vscode.extensions.getExtension("vscode.git");
         if (!gitExtension) {
@@ -121,13 +192,17 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        const git = gitExtension.exports.getAPI(1);
+        const git = gitExtension.exports.getAPI(1) as GitAPI;
         if (git.repositories.length === 0) {
           vscode.window.showErrorMessage("No Git repository found");
           return;
         }
 
-        const repo = git.repositories[0] as GitRepository;
+        const repo = getActiveRepository(git, sourceControl);
+        if (!repo) {
+          vscode.window.showErrorMessage("No Git repository found");
+          return;
+        }
 
         // This command only works in managed mode
         const config = vscode.workspace.getConfiguration("claudeCommit");

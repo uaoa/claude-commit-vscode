@@ -11,6 +11,13 @@ export interface GitRepository {
   };
 }
 
+export interface GitAPI {
+  repositories: GitRepository[];
+  state: {
+    selectedRepositoryIndex?: number;
+  };
+}
+
 export interface DiffResult {
   diff: string;
   stats: string;
