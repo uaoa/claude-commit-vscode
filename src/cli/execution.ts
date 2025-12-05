@@ -109,6 +109,69 @@ export async function generateWithCLI(
   }
 }
 
+export async function generateWithCLIManaged(
+  prompt: string,
+  repoPath: string,
+  progressCallback: ProgressCallback | null = null
+): Promise<string> {
+  const cliPath = await findClaudeCliPath();
+
+  if (!cliPath) {
+    throw new Error("Claude CLI path not found");
+  }
+
+  const escapedCliPath = cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
+
+  const tmpDir = os.tmpdir();
+  const promptFile = path.join(
+    tmpDir,
+    `claude-commit-prompt-${Date.now()}.txt`
+  );
+
+  try {
+    await fs.promises.writeFile(promptFile, prompt, "utf-8");
+
+    if (progressCallback) {
+      progressCallback("Using haiku model (managed mode)...");
+    }
+
+    const command =
+      process.platform === "win32"
+        ? `type "${promptFile}" | ${escapedCliPath} -p --model haiku`
+        : `cat "${promptFile}" | ${escapedCliPath} -p --model haiku`;
+
+    const { stdout, stderr } = await execAsync(command, {
+      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 120000,
+      cwd: repoPath,
+    });
+
+    if (stderr && !stdout) {
+      throw new Error(`CLI error output: ${stderr.trim()}`);
+    }
+
+    return stdout.trim() || "chore: update code";
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException & { killed?: boolean };
+    if (err.killed) {
+      throw new Error(
+        "CLI process timed out after 2 minutes. Try a smaller diff or check your connection."
+      );
+    }
+    if (err.code === "ENOENT") {
+      throw new Error(`CLI executable not found at: ${cliPath}`);
+    }
+    throw error;
+  } finally {
+    try {
+      await fs.promises.unlink(promptFile);
+    } catch {
+      // Ignore deletion errors
+    }
+  }
+}
+
 export async function generateWithAPI(
   prompt: string,
   progressCallback: ProgressCallback | null = null

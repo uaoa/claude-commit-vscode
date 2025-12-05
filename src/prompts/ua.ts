@@ -63,6 +63,18 @@ docs(readme): оновлено інструкції встановлення
 Поверни ТІЛЬКИ commit message (один рядок), без пояснень.`;
 }
 
+export function getManagedPrompt(keepCoAuthoredBy: boolean): string {
+  let prompt = `Згенеруй git commit message для поточних змін, українською мовою, лише commit message, без іншого тексту.`;
+  if (keepCoAuthoredBy) {
+    prompt += `
+
+В кінці commit message додай:
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+  }
+  return prompt;
+}
+
 export function getEditPrompt(
   currentMessage: string,
   userFeedback: string,

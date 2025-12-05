@@ -15,6 +15,11 @@ export function createGenerationPrompt(
   return module.getGenerationPrompt(diff, stats, multiLine);
 }
 
+export function createManagedPrompt(lang: Language, keepCoAuthoredBy: boolean): string {
+  const module = promptModules[lang];
+  return module.getManagedPrompt(keepCoAuthoredBy);
+}
+
 export function createEditPrompt(
   currentMessage: string,
   userFeedback: string,
