@@ -21,14 +21,14 @@ export interface ClaudeCommitConfig {
   apiKey: string;
   preferredMethod: "auto" | "cli" | "api";
   model: "haiku" | "sonnet" | "opus";
-  language: "en" | "ua";
+  language: "en" | "ua" | "zh";
   multiLineCommit: boolean;
   diffSource: "staged" | "all" | "auto";
 }
 
 export type ProgressCallback = (message: string) => void;
 
-export type Language = "en" | "ua";
+export type Language = "en" | "ua" | "zh";
 
 export type Model = "haiku" | "sonnet" | "opus";
 
