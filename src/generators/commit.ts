@@ -7,12 +7,12 @@ import {
   DiffSource,
 } from "../types";
 import { getDiff } from "../utils/git";
-import { createGenerationPrompt, createEditPrompt } from "../prompts/generation";
+import { createGenerationPrompt, createEditPrompt, createManagedPrompt } from "../prompts/generation";
 import {
   hasClaudeCodeCLI,
   promptForCliPath,
 } from "../cli/detection";
-import { generateWithCLI, generateWithAPI } from "../cli/execution";
+import { generateWithCLI, generateWithCLIManaged, generateWithAPI } from "../cli/execution";
 
 export async function generateCommitMessage(
   repo: GitRepository,
@@ -20,12 +20,34 @@ export async function generateCommitMessage(
   progressCallback: ProgressCallback | null = null
 ): Promise<string> {
   const repoPath = repo.rootUri.fsPath;
+  const config = vscode.workspace.getConfiguration("claudeCommit");
+
+  const preferredMethod = config.get<GenerationMethod>("preferredMethod", "auto");
+
+  // Claude Code managed mode: minimal prompt, let Claude Code handle everything
+  // Only effective when preferredMethod is "cli"
+  const claudeCodeManaged = config.get<boolean>("claudeCodeManaged", false);
+
+  if (claudeCodeManaged && preferredMethod === "cli") {
+    if (progressCallback) {
+      progressCallback("Claude Code managed mode...");
+    }
+
+    if (!(await hasClaudeCodeCLI())) {
+      throw new Error(
+        "Claude Code managed mode requires Claude Code CLI. Please install it or disable managed mode."
+      );
+    }
+
+    const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
+    const prompt = createManagedPrompt(language, keepCoAuthoredBy);
+    return await generateWithCLIManaged(prompt, repoPath, progressCallback);
+  }
 
   if (progressCallback) {
     progressCallback("Getting git diff...");
   }
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
   const diffSource = config.get<DiffSource>("diffSource", "auto");
 
   const { diff, stats } = await getDiff(repoPath, diffSource);
@@ -41,8 +63,6 @@ export async function generateCommitMessage(
   const multiLine = config.get<boolean>("multiLineCommit", false);
 
   const prompt = createGenerationPrompt(diff, stats, language, multiLine);
-
-  const preferredMethod = config.get<GenerationMethod>("preferredMethod", "auto");
 
   let commitMessage: string | undefined;
   let cliNotFound = false;

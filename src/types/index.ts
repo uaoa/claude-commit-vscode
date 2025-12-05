@@ -24,6 +24,8 @@ export interface ClaudeCommitConfig {
   language: "en" | "ua" | "zh";
   multiLineCommit: boolean;
   diffSource: "staged" | "all" | "auto";
+  claudeCodeManaged: boolean;
+  keepCoAuthoredBy: boolean;
 }
 
 export type ProgressCallback = (message: string) => void;

@@ -63,6 +63,18 @@ docs(readme): updated installation instructions
 Return ONLY the commit message (one line), no explanations.`;
 }
 
+export function getManagedPrompt(keepCoAuthoredBy: boolean): string {
+  let prompt = `Generate a git commit message for current changes, in English, output only the commit message, no other text.`;
+  if (keepCoAuthoredBy) {
+    prompt += `
+
+Keep at the end of commit message:
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+  }
+  return prompt;
+}
+
 export function getEditPrompt(
   currentMessage: string,
   userFeedback: string,

@@ -121,6 +121,18 @@
 					],
 					"description": "Which changes to use for generating commit messages",
 					"order": 7
+				},
+				"claudeCommit.claudeCodeManaged": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Claude Code managed mode: Let Claude Code's haiku model generate commit messages with minimal intervention (only language hint provided). **Only works when preferredMethod is 'cli'**",
+					"order": 8
+				},
+				"claudeCommit.keepCoAuthoredBy": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "Keep Co-Authored-By signature in commit message. **Only works in Claude Code managed mode**",
+					"order": 9
 				}
 			}
 		}
