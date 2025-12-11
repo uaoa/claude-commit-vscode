@@ -132,6 +132,7 @@ From output start to output end, strictly follow this format:
 
 Keep at the end of footer:
 🤖 Generated with Claude Code
+
 Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 

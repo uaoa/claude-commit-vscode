@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { generateCommitMessage, editCommitMessage, generateWithCustomPrompt } from "./generators/commit";
+import { generateCommitMessage, editCommitMessage } from "./generators/commit";
 import type { GitRepository, GitAPI, Language } from "./types";
 
 /**
@@ -301,11 +301,11 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
           progress.report({ message });
         };
 
-        const newMessage = await generateWithCustomPrompt(
+        const newMessage = await generateCommitMessage(
           repo,
-          customPrompt,
           language,
-          updateProgress
+          updateProgress,
+          customPrompt
         );
 
         if (newMessage) {

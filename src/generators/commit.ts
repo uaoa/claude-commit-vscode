@@ -17,7 +17,8 @@ import { generateWithCLI, generateWithCLIManaged, generateWithAPI } from "../cli
 export async function generateCommitMessage(
   repo: GitRepository,
   language: Language = "en",
-  progressCallback: ProgressCallback | null = null
+  progressCallback: ProgressCallback | null = null,
+  customPrompt: string = ""
 ): Promise<string> {
   const repoPath = repo.rootUri.fsPath;
   const config = vscode.workspace.getConfiguration("claudeCommit");
@@ -42,7 +43,7 @@ export async function generateCommitMessage(
     const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
     const multiLine = config.get<boolean>("multiLineCommit", false);
     const diffSource = config.get<DiffSource>("diffSource", "auto");
-    const prompt = createManagedPrompt(language, keepCoAuthoredBy, multiLine, diffSource, "");
+    const prompt = createManagedPrompt(language, keepCoAuthoredBy, multiLine, diffSource, customPrompt);
     return await generateWithCLIManaged(prompt, repoPath, progressCallback);
   }
 
@@ -149,25 +150,6 @@ export async function generateCommitMessage(
   );
 }
 
-export async function generateWithCustomPrompt(
-  repo: GitRepository,
-  customPrompt: string,
-  language: Language = "en",
-  progressCallback: ProgressCallback | null = null
-): Promise<string> {
-  const repoPath = repo.rootUri.fsPath;
-  const config = vscode.workspace.getConfiguration("claudeCommit");
-
-  if (progressCallback) {
-    progressCallback("Regenerating with custom prompt...");
-  }
-
-  const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
-  const multiLine = config.get<boolean>("multiLineCommit", false);
-  const diffSource = config.get<DiffSource>("diffSource", "auto");
-  const prompt = createManagedPrompt(language, keepCoAuthoredBy, multiLine, diffSource, customPrompt);
-  return await generateWithCLIManaged(prompt, repoPath, progressCallback);
-}
 
 export async function editCommitMessage(
   repo: GitRepository,

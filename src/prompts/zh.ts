@@ -132,6 +132,7 @@ export function getManagedPrompt(keepCoAuthoredBy: boolean, multiline: boolean, 
 
 footer 末尾保留:
 🤖 Generated with Claude Code
+
 Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 
