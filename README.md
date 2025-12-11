@@ -20,7 +20,7 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 - **Edit with feedback**: Not satisfied? Click "Edit with feedback" to refine the message with AI assistance
 - **Multi-line commit support**: Generate detailed commits with body and footer for complex changes
 - **Model selection**: Choose between Haiku (fast), Sonnet (balanced), or Opus (most capable)
-- **Bilingual support**: Works in English and Ukrainian
+- **Multilingual support**: Works in English, Ukrainian, and Chinese
 - **Flexible backend**: Automatically uses Claude CLI, with API fallback option
 - **Auto-discovery & caching**: Finds and remembers your Claude CLI path automatically
 - **Progress indicators**: See exactly what's happening during generation
@@ -55,14 +55,19 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 
 ## Extension Settings
 
-This extension keeps it simple with just a few optional settings:
+This extension keeps it simple with optional settings:
 
 * `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
+* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
-* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
-* `claudeCommit.language`: Interface language (`en` for English, `ua` for Ukrainian)
+* `claudeCommit.language`: Commit message language (`en` for English, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
 * `claudeCommit.multiLineCommit`: Generate detailed multi-line commits with body and footer – defaults to `false`
+* `claudeCommit.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
+* `claudeCommit.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
+* `claudeCommit.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
+* `claudeCommit.messageAutoCloseSeconds`: Auto-close timeout for success message in seconds (0 to disable) – defaults to `5`
+* `claudeCommit.privacyMode`: Restrict temporary prompt file permissions to owner-only on Linux/macOS – defaults to `false`
 
 ## Configuration Examples
 
@@ -97,6 +102,13 @@ The extension will automatically search for Claude CLI in common locations.
 }
 ```
 
+### Chinese interface
+```json
+{
+    "claudeCommit.language": "zh"
+}
+```
+
 ### Detailed multi-line commits
 ```json
 {
@@ -112,6 +124,49 @@ This generates commits with subject, body, and footer following the full convent
 }
 ```
 Available models: `haiku` (fast, default), `sonnet` (balanced), `opus` (most capable).
+
+### Control diff source
+```json
+{
+    "claudeCommit.diffSource": "staged"
+}
+```
+Options: `auto` (default - uses staged if available, otherwise all), `staged` (only staged changes), `all` (all changes including unstaged).
+
+### Claude Code managed mode
+```json
+{
+    "claudeCommit.claudeCodeManaged": true,
+    "claudeCommit.preferredMethod": "cli"
+}
+```
+In this mode, Claude Code's haiku model generates commit messages with minimal intervention. Only a language hint is provided. Requires CLI method.
+
+### Keep Co-Authored-By signature
+```json
+{
+    "claudeCommit.claudeCodeManaged": true,
+    "claudeCommit.keepCoAuthoredBy": true,
+    "claudeCommit.preferredMethod": "cli"
+}
+```
+Keeps the Co-Authored-By signature in commit messages. Only works in Claude Code managed mode.
+
+### Customize auto-close timeout
+```json
+{
+    "claudeCommit.messageAutoCloseSeconds": 10
+}
+```
+Set to `0` to disable auto-close and keep the success message visible until manually dismissed.
+
+### Privacy mode for temporary files
+```json
+{
+    "claudeCommit.privacyMode": true
+}
+```
+Restricts temporary prompt file permissions to owner-only (0600) on Linux/macOS. Windows ignores this setting.
 
 ## Troubleshooting
 
