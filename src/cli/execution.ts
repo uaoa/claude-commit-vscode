@@ -39,15 +39,18 @@ export async function generateWithCLI(
       progressCallback(`Using ${model} model...`);
     }
 
-    const command =
-      process.platform === "win32"
-        ? `type "${promptFile}" | ${escapedCliPath} -p --model ${model}`
-        : `cat "${promptFile}" | ${escapedCliPath} -p --model ${model}`;
+    const baseCommand = process.platform === "win32"
+      ? `type "${promptFile}" | ${escapedCliPath} -p --model ${model}`
+      : `cat "${promptFile}" | ${escapedCliPath} -p --model ${model}`;
+
+    // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
+    const command = process.platform === "win32"
+      ? baseCommand
+      : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
 
     logCommand(command);
 
     const { stdout, stderr } = await execAsync(command, {
-      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       maxBuffer: 10 * 1024 * 1024,
       timeout: 120000,
     });
@@ -163,15 +166,18 @@ export async function generateWithCLIManaged(
       progressCallback("Using haiku model (managed mode)...");
     }
 
-    const command =
-      process.platform === "win32"
-        ? `type "${promptFile}" | ${escapedCliPath} -p --model haiku`
-        : `cat "${promptFile}" | ${escapedCliPath} -p --model haiku`;
+    const baseCommand = process.platform === "win32"
+      ? `type "${promptFile}" | ${escapedCliPath} -p --model haiku`
+      : `cat "${promptFile}" | ${escapedCliPath} -p --model haiku`;
+
+    // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
+    const command = process.platform === "win32"
+      ? baseCommand
+      : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
 
     logCommand(command);
 
     const { stdout, stderr } = await execAsync(command, {
-      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       maxBuffer: 10 * 1024 * 1024,
       timeout: 120000,
       cwd: repoPath,
