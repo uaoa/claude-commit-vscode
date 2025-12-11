@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { generateCommitMessage, editCommitMessage } from "./generators/commit";
 import type { GitRepository, GitAPI, Language } from "./types";
+import { log, logError, showOutputChannel, disposeOutputChannel } from "./utils/logger";
 
 /**
  * Show an information message that auto-closes after a specified timeout.
@@ -105,7 +106,7 @@ function getActiveRepository(
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  console.log("Claude Commit extension is now active");
+  log("Claude Commit extension activated");
 
   const generateCommit = vscode.commands.registerCommand(
     "claude-commit.generate",
@@ -180,9 +181,14 @@ export function activate(context: vscode.ExtensionContext): void {
           const errorMessage = generationError instanceof Error
             ? generationError.message
             : String(generationError);
-          vscode.window.showErrorMessage(
-            `Failed to generate commit: ${errorMessage}`
+          logError("Failed to generate commit", generationError);
+          const action = await vscode.window.showErrorMessage(
+            `Failed to generate commit: ${errorMessage}`,
+            "Show Logs"
           );
+          if (action === "Show Logs") {
+            showOutputChannel();
+          }
           return;
         }
 
@@ -401,4 +407,6 @@ async function handleEditWithFeedback(
   );
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+  disposeOutputChannel();
+}

@@ -6,6 +6,7 @@ import * as path from "path";
 import * as os from "os";
 import { findClaudeCliPath } from "./detection";
 import { ProgressCallback, Model } from "../types";
+import { log, logError, logCommand } from "../utils/logger";
 
 const execAsync = promisify(exec);
 
@@ -43,11 +44,20 @@ export async function generateWithCLI(
         ? `type "${promptFile}" | ${escapedCliPath} -p --model ${model}`
         : `cat "${promptFile}" | ${escapedCliPath} -p --model ${model}`;
 
+    logCommand(command);
+
     const { stdout, stderr } = await execAsync(command, {
       shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       maxBuffer: 10 * 1024 * 1024,
       timeout: 120000,
     });
+
+    if (stderr) {
+      log(`CLI stderr: ${stderr.trim()}`);
+    }
+    if (stdout) {
+      log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
+    }
 
     if (stderr && !stdout) {
       throw new Error(`CLI error output: ${stderr.trim()}`);
@@ -91,7 +101,7 @@ export async function generateWithCLI(
 
     return lines[lines.length - 1] || "chore: update code";
   } catch (error) {
-    const err = error as NodeJS.ErrnoException & { killed?: boolean };
+    const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
     if (err.killed) {
       throw new Error(
         "CLI process timed out after 2 minutes. Try a smaller diff or check your connection."
@@ -100,7 +110,21 @@ export async function generateWithCLI(
     if (err.code === "ENOENT") {
       throw new Error(`CLI executable not found at: ${cliPath}`);
     }
-    throw error;
+    // Provide detailed error information for debugging
+    const stderr = err.stderr?.trim() || "";
+    const stdout = err.stdout?.trim() || "";
+    const details: string[] = [];
+    if (stderr) {
+      details.push(`stderr: ${stderr}`);
+    }
+    if (stdout) {
+      details.push(`stdout: ${stdout}`);
+    }
+    const baseMessage = err.message || String(error);
+    const detailStr = details.length > 0 ? ` [${details.join("; ")}]` : "";
+    const fullError = `CLI execution failed: ${baseMessage}${detailStr}`;
+    logError(fullError, error);
+    throw new Error(fullError);
   } finally {
     try {
       await fs.promises.unlink(promptFile);
@@ -144,6 +168,8 @@ export async function generateWithCLIManaged(
         ? `type "${promptFile}" | ${escapedCliPath} -p --model haiku`
         : `cat "${promptFile}" | ${escapedCliPath} -p --model haiku`;
 
+    logCommand(command);
+
     const { stdout, stderr } = await execAsync(command, {
       shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
       maxBuffer: 10 * 1024 * 1024,
@@ -151,13 +177,20 @@ export async function generateWithCLIManaged(
       cwd: repoPath,
     });
 
+    if (stderr) {
+      log(`CLI stderr: ${stderr.trim()}`);
+    }
+    if (stdout) {
+      log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
+    }
+
     if (stderr && !stdout) {
       throw new Error(`CLI error output: ${stderr.trim()}`);
     }
 
     return stdout.trim() || "chore: update code";
   } catch (error) {
-    const err = error as NodeJS.ErrnoException & { killed?: boolean };
+    const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
     if (err.killed) {
       throw new Error(
         "CLI process timed out after 2 minutes. Try a smaller diff or check your connection."
@@ -166,7 +199,21 @@ export async function generateWithCLIManaged(
     if (err.code === "ENOENT") {
       throw new Error(`CLI executable not found at: ${cliPath}`);
     }
-    throw error;
+    // Provide detailed error information for debugging
+    const stderr = err.stderr?.trim() || "";
+    const stdout = err.stdout?.trim() || "";
+    const details: string[] = [];
+    if (stderr) {
+      details.push(`stderr: ${stderr}`);
+    }
+    if (stdout) {
+      details.push(`stdout: ${stdout}`);
+    }
+    const baseMessage = err.message || String(error);
+    const detailStr = details.length > 0 ? ` [${details.join("; ")}]` : "";
+    const fullError = `CLI execution failed: ${baseMessage}${detailStr}`;
+    logError(fullError, error);
+    throw new Error(fullError);
   } finally {
     try {
       await fs.promises.unlink(promptFile);
