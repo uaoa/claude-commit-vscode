@@ -25,7 +25,12 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 - **Multilingual support**: Works in English, Ukrainian, and Chinese
 - **Flexible backend**: Automatically uses Claude CLI, with API fallback option
 - **Smart runtime detection**: Finds Claude CLI from your PATH at runtime without modifying settings (perfect for WSL)
+- **Custom BASE_URI support**: Works with custom Claude API endpoints via environment variables
 - **In-memory caching**: Remembers the detected CLI path during your session for performance
+- **Multi-repository support**: Intelligently detects and works with multiple Git repositories in workspace
+- **Comprehensive logging**: Detailed debug logs in Output panel for troubleshooting
+- **Privacy mode**: Optional restricted file permissions for temporary prompt files (Linux/macOS)
+- **Auto-close notifications**: Configurable auto-dismiss for success messages
 - **Progress indicators**: See exactly what's happening during generation
 - **Seamless VS Code integration**: Works directly with the built-in Git interface
 
@@ -43,6 +48,15 @@ This extension works seamlessly in Windows Subsystem for Linux (WSL) environment
 - **On Windows**: The extension finds `claude.exe` from the Windows PATH
 - **In WSL**: The extension finds `claude` from the Linux PATH
 - **No conflicts**: Leaving `claudeCommit.cliPath` empty allows automatic detection in both environments
+- **Environment variables**: Login shell support ensures environment variables from `.bashrc`, `.profile`, etc. are properly loaded
+
+### Custom API Endpoint Support
+
+The extension supports custom Claude API endpoints through environment variables:
+
+- **Custom BASE_URI**: Set environment variables for custom API endpoints (e.g., for enterprise deployments)
+- **Login shell**: CLI commands are executed with login shell (`-l` flag) to properly load environment variables
+- **Full compatibility**: Works with standard Claude API and custom endpoints without configuration changes
 
 ## Installation
 
@@ -216,6 +230,17 @@ Generates: `added user login`
 ```
 Use `{diff}` for git diff content (automatically limited to first 6000 characters) and `{stats}` for change statistics. This allows complete control over the prompt sent to Claude.
 
+## Multi-Repository Support
+
+The extension intelligently handles workspaces with multiple Git repositories:
+
+- **Context-aware**: Automatically detects which repository you're working in based on:
+  - The Source Control panel you clicked from (highest priority)
+  - The currently active editor's containing repository
+  - First repository as fallback
+- **No configuration needed**: Works seamlessly with VS Code's built-in multi-repo support
+- **Per-repository commits**: Generate commit messages for the correct repository every time
+
 ## Troubleshooting
 
 ### Claude CLI not found
@@ -307,6 +332,29 @@ This error means Claude CLI was found but didn't return any output. **Check the 
    - **Network issues**: Check your internet connection
    - **Permissions**: Try setting `claudeCommit.privacyMode: false`
    - **Corrupted install**: Reinstall Claude CLI (`npm install -g @anthropic-ai/claude-code`)
+   - **Custom API endpoint**: Ensure environment variables for BASE_URI are properly set in your shell profile
+
+### Using Custom API Endpoints
+
+If you're using a custom Claude API endpoint (e.g., enterprise deployment):
+
+1. **Set environment variables** in your shell profile (`.bashrc`, `.zshrc`, `.profile`):
+   ```bash
+   export BASE_URI="https://your-custom-endpoint.com"
+   export ANTHROPIC_API_KEY="your-api-key"
+   ```
+
+2. **Reload your shell** or restart VS Code to apply changes:
+   ```bash
+   source ~/.bashrc  # or ~/.zshrc
+   ```
+
+3. **Verify the setup**:
+   ```bash
+   claude --version
+   ```
+
+The extension uses a login shell (`-l` flag) to ensure these environment variables are loaded when executing the Claude CLI.
 
 ## Privacy & Security
 
