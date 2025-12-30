@@ -274,12 +274,39 @@ The extension uses intelligent auto-detection to find Claude CLI **at runtime** 
 ### Extension not working
 
 1. Check you're in a Git repository
-2. Open Output panel (View → Output)
-3. Look for error messages from the extension
+2. **Open Output panel** (View → Output) and select **"Claude Commit"** from the dropdown
+3. Look for detailed log messages showing:
+   - Where the extension is searching for Claude CLI
+   - What command is being executed
+   - What output (if any) is received from Claude
 4. Try generating a commit message manually via Command Palette:
    - Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
    - Type "Claude Commit: Generate"
 5. If CLI path is incorrect, clear `claudeCommit.cliPath` in settings to trigger re-detection
+
+### "Empty response from CLI" error
+
+This error means Claude CLI was found but didn't return any output. **Check the Output panel** (select "Claude Commit") for details:
+
+1. **CLI Path**: Verify the detected path is correct
+   - Look for "Found Claude CLI at: ..." in the logs
+   - Test the path manually: run `<path> --version` in terminal
+
+2. **Authentication**: Ensure Claude CLI is authenticated
+   ```bash
+   claude --version
+   # Should show version without errors
+   ```
+
+3. **Command Execution**: Check the exact command being run
+   - Look for "Executing: ..." in the logs
+   - The command should pipe your changes to Claude CLI
+
+4. **Common causes**:
+   - **Not authenticated**: Run `claude` in terminal to authenticate
+   - **Network issues**: Check your internet connection
+   - **Permissions**: Try setting `claudeCommit.privacyMode: false`
+   - **Corrupted install**: Reinstall Claude CLI (`npm install -g @anthropic-ai/claude-code`)
 
 ## Privacy & Security
 

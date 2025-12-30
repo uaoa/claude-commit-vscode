@@ -20,6 +20,7 @@ export async function generateWithCLI(
     throw new Error("Claude CLI path not found");
   }
 
+  log(`Found Claude CLI at: ${cliPath}`);
   const escapedCliPath = cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
 
   const config = vscode.workspace.getConfiguration("claudeCommit");
@@ -60,10 +61,17 @@ export async function generateWithCLI(
     }
     if (stdout) {
       log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
+    } else {
+      log("CLI stdout is empty");
     }
 
     if (stderr && !stdout) {
       throw new Error(`CLI error output: ${stderr.trim()}`);
+    }
+
+    if (!stdout || stdout.trim().length === 0) {
+      logError("Empty response from CLI", new Error(`Command: ${command}, stderr: ${stderr || 'none'}`));
+      throw new Error("Empty response from CLI. Check Output panel for details.");
     }
 
     const lines = stdout
@@ -72,7 +80,8 @@ export async function generateWithCLI(
       .filter((line) => line.length > 0);
 
     if (lines.length === 0) {
-      throw new Error("Empty response from CLI");
+      logError("No valid lines in CLI output", new Error(`stdout: ${stdout}`));
+      throw new Error("Empty response from CLI. Check Output panel for details.");
     }
 
     const multiLine = config.get<boolean>("multiLineCommit", false);

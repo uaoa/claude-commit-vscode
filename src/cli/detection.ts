@@ -4,6 +4,7 @@ import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { log } from "../utils/logger";
 
 const execAsync = promisify(exec);
 
@@ -79,7 +80,9 @@ export async function findClaudeCliPath(): Promise<string | null> {
   const userPath = config.get<string>("cliPath");
 
   if (userPath && userPath.trim()) {
+    log(`Checking user-configured CLI path: ${userPath}`);
     if (await fileExists(userPath)) {
+      log(`Found CLI at user-configured path: ${userPath}`);
       return userPath;
     }
     throw new Error(`Configured CLI path not found: ${userPath}`);
@@ -87,28 +90,34 @@ export async function findClaudeCliPath(): Promise<string | null> {
 
   // 2. Check cache
   if (cachedCliPath && (await fileExists(cachedCliPath))) {
+    log(`Using cached CLI path: ${cachedCliPath}`);
     return cachedCliPath;
   }
+
+  log("Searching for Claude CLI...");
 
   // 3. Try which/where
   try {
     const cmd = process.platform === "win32" ? "where claude" : "which claude";
+    log(`Trying command: ${cmd}`);
     const { stdout } = await execAsync(cmd, {
       env: { ...process.env },
       shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
     });
     const foundPath = stdout.trim().split("\n")[0];
     if (foundPath && (await fileExists(foundPath))) {
+      log(`Found CLI via ${cmd}: ${foundPath}`);
       cachedCliPath = foundPath;
       return foundPath;
     }
-  } catch {
-    // which/where not found
+  } catch (err) {
+    log(`which/where command failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // 4. Try shell profile
   if (process.platform !== "win32") {
     try {
+      log("Trying shell profile sourcing...");
       const { stdout } = await execAsync(
         "source ~/.zshrc 2>/dev/null || source ~/.bashrc 2>/dev/null || true; which claude",
         {
@@ -117,24 +126,28 @@ export async function findClaudeCliPath(): Promise<string | null> {
       );
       const foundPath = stdout.trim();
       if (foundPath && (await fileExists(foundPath))) {
+        log(`Found CLI via shell profile: ${foundPath}`);
         cachedCliPath = foundPath;
         return foundPath;
       }
-    } catch {
-      // Failed
+    } catch (err) {
+      log(`Shell profile sourcing failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   // 5. Check common paths
+  log("Checking common installation paths...");
   const commonPaths = getCommonCliPaths();
   for (const p of commonPaths) {
     const found = await findCliWithGlob(p);
     if (found) {
+      log(`Found CLI at common path: ${found}`);
       cachedCliPath = found;
       return found;
     }
   }
 
+  log("Claude CLI not found in any location");
   return null;
 }
 
