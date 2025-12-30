@@ -72,24 +72,6 @@ async function findCliWithGlob(pattern: string): Promise<string | null> {
   return null;
 }
 
-async function autoSaveCliPath(cliPath: string): Promise<void> {
-  const config = vscode.workspace.getConfiguration("claudeCommit");
-  const currentPath = config.get<string>("cliPath");
-
-  if (!currentPath || !currentPath.trim()) {
-    try {
-      await config.update(
-        "cliPath",
-        cliPath,
-        vscode.ConfigurationTarget.Global
-      );
-      console.log(`Claude CLI path auto-saved: ${cliPath}`);
-    } catch (err) {
-      const error = err as Error;
-      console.warn(`Failed to auto-save CLI path: ${error.message}`);
-    }
-  }
-}
 
 export async function findClaudeCliPath(): Promise<string | null> {
   // 1. Check user settings
@@ -118,7 +100,6 @@ export async function findClaudeCliPath(): Promise<string | null> {
     const foundPath = stdout.trim().split("\n")[0];
     if (foundPath && (await fileExists(foundPath))) {
       cachedCliPath = foundPath;
-      await autoSaveCliPath(foundPath);
       return foundPath;
     }
   } catch {
@@ -137,7 +118,6 @@ export async function findClaudeCliPath(): Promise<string | null> {
       const foundPath = stdout.trim();
       if (foundPath && (await fileExists(foundPath))) {
         cachedCliPath = foundPath;
-        await autoSaveCliPath(foundPath);
         return foundPath;
       }
     } catch {
@@ -151,7 +131,6 @@ export async function findClaudeCliPath(): Promise<string | null> {
     const found = await findCliWithGlob(p);
     if (found) {
       cachedCliPath = found;
-      await autoSaveCliPath(found);
       return found;
     }
   }

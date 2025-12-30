@@ -22,7 +22,8 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 - **Model selection**: Choose between Haiku (fast), Sonnet (balanced), or Opus (most capable)
 - **Multilingual support**: Works in English, Ukrainian, and Chinese
 - **Flexible backend**: Automatically uses Claude CLI, with API fallback option
-- **Auto-discovery & caching**: Finds and remembers your Claude CLI path automatically
+- **Smart runtime detection**: Finds Claude CLI from your PATH at runtime without modifying settings (perfect for WSL)
+- **In-memory caching**: Remembers the detected CLI path during your session for performance
 - **Progress indicators**: See exactly what's happening during generation
 - **Seamless VS Code integration**: Works directly with the built-in Git interface
 
@@ -32,6 +33,14 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 - Claude CLI installed and authenticated (comes with your Claude Code subscription)
 - Git repository initialized in your workspace
 - Internet connection for AI generation
+
+### WSL Compatibility
+
+This extension works seamlessly in Windows Subsystem for Linux (WSL) environments. The extension automatically detects the Claude CLI from the system's PATH at runtime without modifying your settings, ensuring compatibility across both Windows and WSL environments:
+
+- **On Windows**: The extension finds `claude.exe` from the Windows PATH
+- **In WSL**: The extension finds `claude` from the Linux PATH
+- **No conflicts**: Leaving `claudeCommit.cliPath` empty allows automatic detection in both environments
 
 ## Installation
 
@@ -172,7 +181,7 @@ Restricts temporary prompt file permissions to owner-only (0600) on Linux/macOS.
 
 ### Claude CLI not found
 
-The extension uses intelligent auto-detection to find Claude CLI. If it's not found automatically:
+The extension uses intelligent auto-detection to find Claude CLI **at runtime** without modifying your settings. If it's not found automatically:
 
 1. **On first use**: The extension will prompt you to configure the path:
    - **Browse for CLI**: Opens a file picker to locate the executable
@@ -185,15 +194,17 @@ The extension uses intelligent auto-detection to find Claude CLI. If it's not fo
    ```
    This shows the path (e.g., `/Users/you/.nvm/versions/node/v22.13.0/bin/claude`)
 
-3. **Configure the path in settings**:
+3. **Configure the path in settings** (only if needed):
    - Open VS Code Settings (Cmd+, or Ctrl+,)
    - Search for "claudeCommit.cliPath"
    - Paste the path from step 2
+   - **Note**: Leave this empty for automatic runtime detection (recommended for WSL users)
 
-4. **Auto-detection locations** (checked in order):
-   - User-configured path in settings
-   - System PATH (via `which claude`)
-   - Shell profile paths (~/.zshrc, ~/.bashrc)
+4. **Auto-detection locations** (checked in order at runtime):
+   - User-configured path in settings (if set)
+   - In-memory cache (from previous detection in current session)
+   - System PATH (via `which claude` or `where claude`)
+   - Shell profile paths (~/.zshrc, ~/.bashrc on Unix-like systems)
    - Common installation paths:
      - `/usr/local/bin/claude`
      - `/opt/homebrew/bin/claude`
@@ -207,8 +218,9 @@ The extension uses intelligent auto-detection to find Claude CLI. If it's not fo
    ```
 
 6. **Common issues**:
-   - **NVM users**: Auto-detection now supports NVM paths, but you may need to configure manually once
-   - **macOS**: The extension now loads shell profiles to find paths
+   - **WSL users**: Keep `claudeCommit.cliPath` empty to allow runtime detection in both Windows and WSL
+   - **NVM users**: Auto-detection supports NVM paths via shell profile sourcing
+   - **macOS**: The extension loads shell profiles to find paths
    - **Windows**: Checks common npm installation directories
 
 ### No commit message generated
