@@ -1,18 +1,43 @@
 export function getGenerationPrompt(
   diff: string,
   stats: string,
-  multiLine: boolean
+  multiLine: boolean,
+  commitStyle: string = "conventional"
 ): string {
+  const diffContent = diff.slice(0, 6000);
+  const styleInstructions = getStyleInstructions(commitStyle, multiLine);
+
   if (multiLine) {
-    return `Проаналізуй git зміни та згенеруй детальний commit message у форматі conventional commits.
+    return `Проаналізуй git зміни та згенеруй детальний commit message.
 
 Статистика змін:
 ${stats}
 
 Diff (перші 6000 символів):
-${diff.slice(0, 6000)}
+${diffContent}
 
-ФОРМАТ ВІДПОВІДІ:
+${styleInstructions}
+
+Поверни ТІЛЬКИ commit message у вказаному форматі, без пояснень.`;
+  }
+
+  return `Проаналізуй git зміни та згенеруй commit message.
+
+Статистика змін:
+${stats}
+
+Diff (перші 6000 символів):
+${diffContent}
+
+${styleInstructions}
+
+Поверни ТІЛЬКИ commit message (один рядок), без пояснень.`;
+}
+
+function getStyleInstructions(style: string, multiLine: boolean): string {
+  switch (style) {
+    case "conventional":
+      return multiLine ? `ФОРМАТ ВІДПОВІДІ:
 <type>(<scope>): <subject>
 
 <body>
@@ -33,20 +58,7 @@ feat(auth): додано Google OAuth провайдер
 Додано обробку токенів та refresh механізм.
 Оновлено конфігурацію для підтримки нових провайдерів.
 
-Closes #123
-
-Поверни ТІЛЬКИ commit message у вказаному форматі, без пояснень.`;
-  }
-
-  return `Проаналізуй git зміни та згенеруй commit message у форматі conventional commits.
-
-Статистика змін:
-${stats}
-
-Diff (перші 6000 символів):
-${diff.slice(0, 6000)}
-
-СУВОРІ ПРАВИЛА:
+Closes #123` : `СУВОРІ ПРАВИЛА:
 - Формат: <type>(<scope>): <subject>
 - Type: feat/fix/refactor/docs/style/test/chore/perf
 - Subject ТІЛЬКИ у МИНУЛОМУ ЧАСІ (що ЗРОБЛЕНО), макс 50 символів, без крапки
@@ -58,9 +70,79 @@ ${diff.slice(0, 6000)}
 feat(auth): додано Google OAuth провайдер
 fix(api): виправлено помилку валідації в user endpoint
 refactor(store): оптимізовано управління станом корзини
-docs(readme): оновлено інструкції встановлення
+docs(readme): оновлено інструкції встановлення`;
 
-Поверни ТІЛЬКИ commit message (один рядок), без пояснень.`;
+    case "prefix":
+      return multiLine ? `ФОРМАТ ВІДПОВІДІ:
+<type>: <subject>
+
+<body>
+
+<footer>
+
+ПРАВИЛА:
+- Subject: МИНУЛИЙ ЧАС, макс 50 символів, без крапки
+- Body: детальний опис змін (що і чому змінено)
+- Footer: Breaking changes, issue references
+- Type: feat/fix/refactor/docs/style/test/chore/perf
+- Дієслова: додано, виправлено, оновлено, видалено, рефакторено
+- БЕЗ SCOPE в дужках
+
+Приклад:
+feat: додано Google OAuth провайдер
+
+Реалізовано аутентифікацію через Google OAuth 2.0.
+Додано обробку токенів та refresh механізм.
+
+Closes #123` : `СУВОРІ ПРАВИЛА:
+- Формат: <type>: <subject>
+- Type: feat/fix/refactor/docs/style/test/chore/perf
+- Subject ТІЛЬКИ у МИНУЛОМУ ЧАСІ (що ЗРОБЛЕНО), макс 50 символів, без крапки
+- Використовуй дієслова: додано, виправлено, оновлено, видалено, рефакторено
+- БЕЗ SCOPE в дужках
+
+Приклади:
+feat: додано Google OAuth провайдер
+fix: виправлено помилку валідації в user endpoint
+refactor: оптимізовано управління станом корзини
+docs: оновлено інструкції встановлення`;
+
+    case "default":
+      return multiLine ? `ФОРМАТ ВІДПОВІДІ:
+<subject>
+
+<body>
+
+<footer>
+
+ПРАВИЛА:
+- Subject: МИНУЛИЙ ЧАС, чіткий опис, макс 50 символів, без крапки
+- Body: детальний опис змін (що і чому змінено)
+- Footer: Breaking changes, issue references
+- Використовуй дієслова: додано, виправлено, оновлено, видалено, рефакторено
+- БЕЗ TYPE префікса, БЕЗ SCOPE
+
+Приклад:
+додано Google OAuth провайдер
+
+Реалізовано аутентифікацію через Google OAuth 2.0.
+Додано обробку токенів та refresh механізм.
+
+Closes #123` : `СУВОРІ ПРАВИЛА:
+- Формат: простий опис без type/scope префікса
+- Subject ТІЛЬКИ у МИНУЛОМУ ЧАСІ (що ЗРОБЛЕНО), макс 50 символів, без крапки
+- Використовуй дієслова: додано, виправлено, оновлено, видалено, рефакторено
+- БЕЗ TYPE префікса (feat/fix/тощо), БЕЗ SCOPE
+
+Приклади:
+додано Google OAuth провайдер
+виправлено помилку валідації в user endpoint
+оптимізовано управління станом корзини
+оновлено інструкції встановлення`;
+
+    default:
+      return getStyleInstructions("conventional", multiLine);
+  }
 }
 
 export function getManagedPrompt(keepCoAuthoredBy: boolean, multiline: boolean, diffSource: string, customPrompt: string): string {

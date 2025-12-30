@@ -9,10 +9,19 @@ export function createGenerationPrompt(
   diff: string,
   stats: string,
   lang: Language,
-  multiLine = false
+  multiLine = false,
+  commitStyle = "conventional",
+  customTemplate?: string
 ): string {
+  // If custom style and template provided, use it
+  if (commitStyle === "custom" && customTemplate) {
+    return customTemplate
+      .replace(/\{diff\}/g, diff.slice(0, 6000))
+      .replace(/\{stats\}/g, stats);
+  }
+
   const module = promptModules[lang];
-  return module.getGenerationPrompt(diff, stats, multiLine);
+  return module.getGenerationPrompt(diff, stats, multiLine, commitStyle);
 }
 
 export function createManagedPrompt(lang: Language, keepCoAuthoredBy: boolean, multiline: boolean, diffSource: string, customPrompt: string): string {

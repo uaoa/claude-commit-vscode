@@ -33,6 +33,8 @@ export interface ClaudeCommitConfig {
   diffSource: "staged" | "all" | "auto";
   claudeCodeManaged: boolean;
   keepCoAuthoredBy: boolean;
+  commitStyle: "conventional" | "prefix" | "default" | "custom";
+  customPromptTemplate: string;
 }
 
 export type ProgressCallback = (message: string) => void;
@@ -44,3 +46,5 @@ export type Model = "haiku" | "sonnet" | "opus";
 export type GenerationMethod = "auto" | "cli" | "api";
 
 export type DiffSource = "staged" | "all" | "auto";
+
+export type CommitStyle = "conventional" | "prefix" | "default" | "custom";

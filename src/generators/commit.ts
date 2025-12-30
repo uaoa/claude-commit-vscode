@@ -64,8 +64,10 @@ export async function generateCommitMessage(
   }
 
   const multiLine = config.get<boolean>("multiLineCommit", false);
+  const commitStyle = config.get<string>("commitStyle", "conventional");
+  const customTemplate = config.get<string>("customPromptTemplate", "");
 
-  const prompt = createGenerationPrompt(diff, stats, language, multiLine);
+  const prompt = createGenerationPrompt(diff, stats, language, multiLine, commitStyle, customTemplate);
 
   let commitMessage: string | undefined;
   let cliNotFound = false;

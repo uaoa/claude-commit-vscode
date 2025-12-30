@@ -16,7 +16,9 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 
 - **One-click commit message generation**: The sparkle button ✨ you know and love, right in VS Code's Source Control panel
 - **Powered by your Claude CLI**: Uses your existing Claude installation – no extra API keys or subscriptions needed
-- **Context-aware analysis**: Understands your git diff to generate meaningful, conventional commit messages
+- **Context-aware analysis**: Understands your git diff to generate meaningful commit messages
+- **Flexible commit styles**: Choose from conventional commits, prefix-only, simple descriptions, or create your own custom template
+- **Custom prompt templates**: Full control over AI prompts with `{diff}` and `{stats}` template variables
 - **Edit with feedback**: Not satisfied? Click "Edit with feedback" to refine the message with AI assistance
 - **Multi-line commit support**: Generate detailed commits with body and footer for complex changes
 - **Model selection**: Choose between Haiku (fast), Sonnet (balanced), or Opus (most capable)
@@ -77,6 +79,8 @@ This extension keeps it simple with optional settings:
 * `claudeCommit.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
 * `claudeCommit.messageAutoCloseSeconds`: Auto-close timeout for success message in seconds (0 to disable) – defaults to `5`
 * `claudeCommit.privacyMode`: Restrict temporary prompt file permissions to owner-only on Linux/macOS – defaults to `false`
+* `claudeCommit.commitStyle`: Commit message style format (`conventional`, `prefix`, `default`, or `custom`) – defaults to `conventional`
+* `claudeCommit.customPromptTemplate`: Custom prompt template with `{diff}` and `{stats}` variables (only used when commitStyle is `custom`) – defaults to empty
 
 ## Configuration Examples
 
@@ -176,6 +180,41 @@ Set to `0` to disable auto-close and keep the success message visible until manu
 }
 ```
 Restricts temporary prompt file permissions to owner-only (0600) on Linux/macOS. Windows ignores this setting.
+
+### Commit message styles
+
+#### Conventional Commits (default)
+```json
+{
+    "claudeCommit.commitStyle": "conventional"
+}
+```
+Generates: `feat(auth): added user login`
+
+#### Prefix only (without scope)
+```json
+{
+    "claudeCommit.commitStyle": "prefix"
+}
+```
+Generates: `feat: added user login`
+
+#### Simple description (no prefix)
+```json
+{
+    "claudeCommit.commitStyle": "default"
+}
+```
+Generates: `added user login`
+
+#### Custom prompt template
+```json
+{
+    "claudeCommit.commitStyle": "custom",
+    "claudeCommit.customPromptTemplate": "Generate a concise commit message following our team's style.\n\nChanges:\n{stats}\n\nDiff (first 6000 chars):\n{diff}\n\nFormat: <category>: <description>\nCategories: feature, bugfix, refactor, docs, test, chore\nReturn only the commit message."
+}
+```
+Use `{diff}` for git diff content (automatically limited to first 6000 characters) and `{stats}` for change statistics. This allows complete control over the prompt sent to Claude.
 
 ## Troubleshooting
 

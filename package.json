@@ -152,6 +152,31 @@
 					"default": false,
 					"markdownDescription": "Privacy mode: Restrict temporary prompt file permissions to owner-only (0600). When disabled, uses default permissions (0644). **Note: This option only takes effect on Linux/macOS. On Windows, file permissions are managed by the OS and this setting is ignored.**",
 					"order": 11
+				},
+				"claudeCommit.commitStyle": {
+					"type": "string",
+					"enum": [
+						"conventional",
+						"prefix",
+						"default",
+						"custom"
+					],
+					"default": "conventional",
+					"enumDescriptions": [
+						"Conventional Commits with scope - feat(auth): added user login",
+						"Type prefix only - feat: added user login",
+						"Simple description - added user login",
+						"Custom template using {diff} and {stats} variables"
+					],
+					"markdownDescription": "Commit message style format. Choose 'custom' to use your own prompt template.",
+					"order": 12
+				},
+				"claudeCommit.customPromptTemplate": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Custom prompt template. Use `{diff}` for diff content and `{stats}` for change statistics. Only used when commitStyle is set to 'custom'. Example: `Generate a commit message for:\n\n{stats}\n\n{diff}`",
+					"editPresentation": "multilineText",
+					"order": 13
 				}
 			}
 		}
