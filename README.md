@@ -1,5 +1,10 @@
 # Claude Commit
 
+[![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
+[![License](https://img.shields.io/github/license/uaoa/claude-commit-vscode?style=for-the-badge)](LICENSE)
+
 **Already using Claude Code? Get the commit message button you deserve – at no extra cost.**
 
 A VS Code extension that brings the ✨ sparkle button to your Git panel, powered by the Claude CLI you already have. Generate intelligent commit messages without paying for additional AI services.
