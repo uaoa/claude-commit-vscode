@@ -146,80 +146,41 @@ updated installation instructions`;
   }
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean, multiline: boolean, diffSource: string, customPrompt: string): string {
-  let diffInstruction = "";
-  if (diffSource === "staged") {
-    diffInstruction = "Generate commit message based ONLY on staged changes, ignore unstaged changes.";
-  } else if (diffSource === "all") {
-    diffInstruction = "Generate commit message based on ALL changes (both staged and unstaged).";
-  } else {
-    diffInstruction = "If there are staged changes, generate commit message based on staged only; if staging area is empty, generate based on all changes.";
-  }
+export function getManagedPrompt(diff: string, stats: string, keepCoAuthoredBy: boolean, multiline: boolean, customPrompt: string): { systemPrompt: string; userPrompt: string } {
+  const diffContent = diff.slice(0, 6000);
 
-  let prompt = `Generate a git commit message for current changes, in English, output only the commit message content directly, no other text.
+  let systemPrompt = `You are a "Git Commit Message Generator" function. You have no conversational ability. Output ONLY the commit message in plain text.
 
-Role Definition:
-You are now a "Git Commit Message Generator" function running in a script. You have no conversational ability, no personality, and no externalization of thought processes.
-
-Your only task is to convert input code changes into English Commit Messages that conform to the Angular specification.
-
-
-### Strict Execution Standards:
-1. **Zero nonsense**: Absolutely no output like "Based on analysis...", "Here's your message...", "Summary of changes:" or any conversational content.
-2. **Plain text**: Absolutely no use of \`\`\` (Markdown code blocks) or ** (bold) formatting. Output plain text only.
-3. **Format constraint**:
-   First line must conform to: <feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
-   (scope is the module name, subject is a brief description in English)
-4. **Change scope**: ${diffInstruction}
-5. **Generate message only**: Absolutely no extra content before or after commit message, such as polite hints or thinking processes.
-
-### Wrong examples (absolutely forbidden):
-❌ "Okay, based on your code..."
-❌ "**Change analysis**: Updated..."
-❌ "...commit message:"
-❌ \`\`\`text feat(core): ... \`\`\`
-
-### Correct example:
-✅ feat(auth): fix JWT token expiration edge case
-
-From output start to output end, strictly follow this format:
-<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>`;
+Rules:
+- First line: <feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
+- Subject in PAST TENSE, max 50 chars, no period
+- No markdown, no code blocks, no explanations, no preamble`;
 
   if (multiline) {
-    prompt += `
-
-<body>`;
+    systemPrompt += `
+- Include body with detailed description after blank line`;
   }
 
   if (keepCoAuthoredBy) {
-    prompt += `
-
-<footer>`;
-  }
-
-  if (multiline) {
-    prompt += `
-
-- Body allows multiline output
-`;
-  }
-
-  if (customPrompt) {
-    prompt += `
-
-- Additional requirements: ${customPrompt}`;
-  }
-
-  if (keepCoAuthoredBy) {
-    prompt += `
-
-Keep at the end of footer:
+    systemPrompt += `
+- End with footer:
 🤖 Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 
-  return prompt;
+  if (customPrompt) {
+    systemPrompt += `
+- Additional requirements: ${customPrompt}`;
+  }
+
+  const userPrompt = `Change statistics:
+${stats}
+
+Diff (first 6000 characters):
+${diffContent}`;
+
+  return { systemPrompt, userPrompt };
 }
 
 export function getEditPrompt(

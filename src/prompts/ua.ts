@@ -145,80 +145,42 @@ Closes #123` : `СУВОРІ ПРАВИЛА:
   }
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean, multiline: boolean, diffSource: string, customPrompt: string): string {
-  let diffInstruction = "";
-  if (diffSource === "staged") {
-    diffInstruction = "Генеруй commit message ТІЛЬКИ на основі staged змін, ігноруй unstaged зміни.";
-  } else if (diffSource === "all") {
-    diffInstruction = "Генеруй commit message на основі ВСІХ змін (staged та unstaged).";
-  } else {
-    diffInstruction = "Якщо є staged зміни, генеруй commit message тільки на їх основі; якщо staging area порожня, генеруй на основі всіх змін.";
-  }
+export function getManagedPrompt(diff: string, stats: string, keepCoAuthoredBy: boolean, multiline: boolean, customPrompt: string): { systemPrompt: string; userPrompt: string } {
+  const diffContent = diff.slice(0, 6000);
 
-  let prompt = `Згенеруй git commit message для поточних змін, українською мовою, виводь лише вміст commit message напряму, без іншого тексту.
+  let systemPrompt = `Ти "Генератор Git Commit повідомлень". Не маєш здатності до діалогу. Виводь ТІЛЬКИ commit message простим текстом.
 
-Визначення ролі:
-Ти зараз є функцією "Генератор Git Commit повідомлень", що працює в скрипті. Ти не маєш здатності до діалогу, не маєш особистості, і заборонено зовнішнє вираження процесу мислення.
-
-Твоє єдине завдання - перетворити вхідні зміни коду на українські Commit Messages, що відповідають специфікації Angular.
-
-
-### Суворі стандарти виконання:
-1. **Нуль зайвого**: Суворо заборонено виводити "На основі аналізу...", "Ось ваше повідомлення...", "Підсумок змін:" або будь-який діалоговий контент.
-2. **Простий текст**: Суворо заборонено використовувати \`\`\` (Markdown блоки коду) або ** (жирний) форматування. Виводити лише простий текст.
-3. **Обмеження формату**:
-   Перший рядок повинен відповідати: <feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
-   (scope - назва модуля, subject - короткий опис українською)
-4. **Область змін**: ${diffInstruction}
-5. **Генеруй тільки повідомлення**: Суворо заборонено будь-який додатковий контент перед або після commit message, як-от ввічливі підказки або процеси мислення.
-
-### Неправильні приклади (абсолютно заборонено):
-❌ "Добре, на основі вашого коду..."
-❌ "**Аналіз змін**: Оновлено..."
-❌ "...повідомлення коміту..."
-❌ \`\`\`text feat(core): ... \`\`\`
-
-### Правильний приклад:
-✅ feat(auth): виправлено граничний випадок закінчення терміну дії JWT токена
-
-Від початку виводу до кінця виводу, суворо дотримуйся цього формату:
-<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>`;
+Правила:
+- Перший рядок: <feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
+- Subject українською у МИНУЛОМУ ЧАСІ, макс 50 символів, без крапки
+- Дієслова: додано, виправлено, оновлено, видалено, рефакторено
+- Без markdown, без блоків коду, без пояснень`;
 
   if (multiline) {
-    prompt += `
-
-<body>`;
+    systemPrompt += `
+- Додай body з детальним описом після порожнього рядка`;
   }
 
   if (keepCoAuthoredBy) {
-    prompt += `
-
-<footer>`;
-  }
-
-  if (multiline) {
-    prompt += `
-
-- Body дозволяє багаторядковий вивід
-`;
-  }
-
-  if (customPrompt) {
-    prompt += `
-
-- Додаткові вимоги: ${customPrompt}`;
-  }
-
-  if (keepCoAuthoredBy) {
-    prompt += `
-
-В кінці footer додай:
+    systemPrompt += `
+- В кінці footer додай:
 🤖 Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 
-  return prompt;
+  if (customPrompt) {
+    systemPrompt += `
+- Додаткові вимоги: ${customPrompt}`;
+  }
+
+  const userPrompt = `Статистика змін:
+${stats}
+
+Diff (перші 6000 символів):
+${diffContent}`;
+
+  return { systemPrompt, userPrompt };
 }
 
 export function getEditPrompt(

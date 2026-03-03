@@ -40,9 +40,10 @@ export async function generateWithCLI(
       progressCallback(`Using ${model} model...`);
     }
 
+    const cliFlags = `-p --no-session-persistence --model ${model} --tools "" --effort low`;
     const baseCommand = process.platform === "win32"
-      ? `type "${promptFile}" | ${escapedCliPath} -p --model ${model}`
-      : `cat "${promptFile}" | ${escapedCliPath} -p --model ${model}`;
+      ? `type "${promptFile}" | ${escapedCliPath} ${cliFlags}`
+      : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
 
     // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
     const command = process.platform === "win32"
@@ -148,7 +149,7 @@ export async function generateWithCLI(
 
 export async function generateWithCLIManaged(
   prompt: string,
-  repoPath: string,
+  systemPrompt: string,
   progressCallback: ProgressCallback | null = null
 ): Promise<string> {
   const cliPath = await findClaudeCliPath();
@@ -167,17 +168,24 @@ export async function generateWithCLIManaged(
     tmpDir,
     `claude-commit-prompt-${Date.now()}.txt`
   );
+  const systemPromptFile = path.join(
+    tmpDir,
+    `claude-commit-system-${Date.now()}.txt`
+  );
 
   try {
     await fs.promises.writeFile(promptFile, prompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
+    await fs.promises.writeFile(systemPromptFile, systemPrompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
 
     if (progressCallback) {
       progressCallback("Using haiku model (managed mode)...");
     }
 
+    const systemPromptEscaped = systemPromptFile.includes(" ") ? `"${systemPromptFile}"` : systemPromptFile;
+    const cliFlags = `-p --no-session-persistence --model haiku --tools "" --effort low --system-prompt "$(cat ${systemPromptEscaped})"`;
     const baseCommand = process.platform === "win32"
-      ? `type "${promptFile}" | ${escapedCliPath} -p --model haiku`
-      : `cat "${promptFile}" | ${escapedCliPath} -p --model haiku`;
+      ? `type "${promptFile}" | ${escapedCliPath} -p --no-session-persistence --model haiku --tools "" --effort low`
+      : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
 
     // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
     const command = process.platform === "win32"
@@ -189,7 +197,6 @@ export async function generateWithCLIManaged(
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: 120000,
-      cwd: repoPath,
     });
 
     if (stderr) {
@@ -232,6 +239,7 @@ export async function generateWithCLIManaged(
   } finally {
     try {
       await fs.promises.unlink(promptFile);
+      await fs.promises.unlink(systemPromptFile);
     } catch {
       // Ignore deletion errors
     }

@@ -145,80 +145,42 @@ Closes #123` : `严格规则：
   }
 }
 
-export function getManagedPrompt(keepCoAuthoredBy: boolean, multiline: boolean, diffSource: string, customPrompt: string): string {
-  let diffInstruction = "";
-  if (diffSource === "staged") {
-    diffInstruction = "仅根据暂存区(staged)的改动生成commit message，忽略未暂存的改动。";
-  } else if (diffSource === "all") {
-    diffInstruction = "根据所有改动(包括暂存和未暂存)生成commit message。";
-  } else {
-    diffInstruction = "如果暂存区有改动，仅根据暂存区改动生成commit message；如果暂存区为空，则根据所有改动生成commit message。";
-  }
+export function getManagedPrompt(diff: string, stats: string, keepCoAuthoredBy: boolean, multiline: boolean, customPrompt: string): { systemPrompt: string; userPrompt: string } {
+  const diffContent = diff.slice(0, 6000);
 
-  let prompt = `为当前改动生成git commit message，使用中文，直接输出commit message内容，不要有其他多余输出。
+  let systemPrompt = `你是"Git Commit 消息生成器"函数。你没有对话能力。仅输出纯文本 commit message。
 
-角色定义：
-你现在是一个运行在脚本中的"Git Commit 消息生成器"函数。你没有对话能力，没有个性，禁止思考过程的外显。
-
-你的唯一任务是将输入的代码变动转换为符合 Angular 规范的中文 Commit Message。
-
-
-### 严格执行标准：
-1. **零废话**：严禁输出 "根据分析..."、"这是您的消息..."、"改动总结：" 等任何对话内容。
-2. **纯文本**：严禁使用 \`\`\` (Markdown代码块) 或 ** (加粗) 等格式。只输出纯文本。
-3. **格式约束**：
-   第一行必须符合：<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
-   (scope为模块名，subject用中文简述)
-4. **改动范围**：${diffInstruction}
-5. **仅生成message**: 在commit message 前后禁止输出任何多余的内容，如礼貌性的提示和思考过程。
-
-### 错误示例 (绝对禁止)：
-❌ "好的，根据您的代码..."
-❌ "**改动分析**：更新了..."
-❌ "...提交信息..."
-❌ \`\`\`text feat(core): ... \`\`\`
-
-### 正确示例：
-✅ feat(auth): 修复JWT令牌过期的边界情况
-
-从输出开始到输出结束，需严格遵循以下格式：
-<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>`;
+规则：
+- 第一行：<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
+- Subject 使用过去时态中文，最多50字符，不加句号
+- 使用动词：添加了、修复了、更新了、删除了、重构了
+- 禁止 markdown、代码块、解释`;
 
   if (multiline) {
-    prompt += `
-
-<body>`;
+    systemPrompt += `
+- 空行后添加详细描述的 body`;
   }
 
   if (keepCoAuthoredBy) {
-    prompt += `
-
-<footer>`;
-  }
-
-  if (multiline) {
-    prompt += `
-
-- Body允许使用多行输出
-`;
-  }
-
-  if (customPrompt) {
-    prompt += `
-
-- 额外要求：${customPrompt}`;
-  }
-
-  if (keepCoAuthoredBy) {
-    prompt += `
-
-footer 末尾保留:
+    systemPrompt += `
+- footer 末尾保留:
 🤖 Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>`;
   }
 
-  return prompt;
+  if (customPrompt) {
+    systemPrompt += `
+- 额外要求：${customPrompt}`;
+  }
+
+  const userPrompt = `变更统计：
+${stats}
+
+Diff（前6000个字符）：
+${diffContent}`;
+
+  return { systemPrompt, userPrompt };
 }
 
 export function getEditPrompt(

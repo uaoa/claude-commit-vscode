@@ -31,7 +31,7 @@ export async function generateCommitMessage(
 
   if (claudeCodeManaged && preferredMethod === "cli") {
     if (progressCallback) {
-      progressCallback("Claude Code managed mode...");
+      progressCallback("Getting git diff...");
     }
 
     if (!(await hasClaudeCodeCLI())) {
@@ -40,11 +40,17 @@ export async function generateCommitMessage(
       );
     }
 
+    const diffSource = config.get<DiffSource>("diffSource", "auto");
+    const { diff, stats } = await getDiff(repoPath, diffSource);
+
+    if (!diff && !stats) {
+      throw new Error("No changes found. Stage some files first.");
+    }
+
     const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
     const multiLine = config.get<boolean>("multiLineCommit", false);
-    const diffSource = config.get<DiffSource>("diffSource", "auto");
-    const prompt = createManagedPrompt(language, keepCoAuthoredBy, multiLine, diffSource, customPrompt);
-    return await generateWithCLIManaged(prompt, repoPath, progressCallback);
+    const { systemPrompt, userPrompt } = createManagedPrompt(language, diff, stats, keepCoAuthoredBy, multiLine, customPrompt);
+    return await generateWithCLIManaged(userPrompt, systemPrompt, progressCallback);
   }
 
   if (progressCallback) {

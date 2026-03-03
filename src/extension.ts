@@ -130,21 +130,18 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        // Skip change check in Claude Code managed mode (Claude Code will detect changes itself)
         const config = vscode.workspace.getConfiguration("claudeCommit");
         const claudeCodeManaged = config.get<boolean>("claudeCodeManaged", false);
         const preferredMethod = config.get<string>("preferredMethod", "auto");
 
-        if (!(claudeCodeManaged && preferredMethod === "cli")) {
-          if (
-            repo.state.indexChanges.length === 0 &&
-            repo.state.workingTreeChanges.length === 0
-          ) {
-            vscode.window.showWarningMessage(
-              "No changes to commit. Stage files first."
-            );
-            return;
-          }
+        if (
+          repo.state.indexChanges.length === 0 &&
+          repo.state.workingTreeChanges.length === 0
+        ) {
+          vscode.window.showWarningMessage(
+            "No changes to commit. Stage files first."
+          );
+          return;
         }
 
         let commitMessage: string | null = null;
