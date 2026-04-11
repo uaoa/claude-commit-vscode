@@ -10,7 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
     "types": ["node"]
   },
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "webpack.config.ts"]
