@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.17). Leave empty to use package.json'
+        required: false
+        type: string
+      publish:
+        description: 'Publish to VS Code Marketplace'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Sync package.json version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          TARGET="${{ steps.version.outputs.version }}"
+          if [ "$CURRENT" != "$TARGET" ]; then
+            npm version "$TARGET" --no-git-tag-version
+          fi
+
+      - name: Build extension
+        run: npm run package
+
+      - name: Package VSIX
+        run: npx vsce package --no-dependencies -o "claude-git-commit-${{ steps.version.outputs.version }}.vsix"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          set -e
+          CURRENT_TAG="${{ steps.version.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1 || true)
+
+          if [ -z "$PREV_TAG" ]; then
+            RANGE=""
+            echo "No previous tag found, using full history"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+            echo "Range: $RANGE"
+          fi
+
+          LOG=$(git log $RANGE --pretty=format:"%H%x09%s%x09%an" --no-merges)
+
+          FEATURES=""
+          FIXES=""
+          PERF=""
+          DOCS=""
+          REFACTOR=""
+          CHORE=""
+          OTHER=""
+
+          while IFS=$'\t' read -r HASH SUBJECT AUTHOR; do
+            [ -z "$HASH" ] && continue
+            SHORT="${HASH:0:7}"
+            LINE="- ${SUBJECT} (${SHORT})"
+            case "$SUBJECT" in
+              feat*|feature*)    FEATURES="${FEATURES}${LINE}"$'\n' ;;
+              fix*)              FIXES="${FIXES}${LINE}"$'\n' ;;
+              perf*)             PERF="${PERF}${LINE}"$'\n' ;;
+              docs*)              DOCS="${DOCS}${LINE}"$'\n' ;;
+              refactor*)         REFACTOR="${REFACTOR}${LINE}"$'\n' ;;
+              chore*|build*|ci*) CHORE="${CHORE}${LINE}"$'\n' ;;
+              [0-9]*)            continue ;;
+              *)                 OTHER="${OTHER}${LINE}"$'\n' ;;
+            esac
+          done <<< "$LOG"
+
+          {
+            echo "## Claude Git Commit v${{ steps.version.outputs.version }}"
+            echo ""
+            [ -n "$FEATURES" ] && { echo "### ✨ Features"; echo ""; echo "$FEATURES"; }
+            [ -n "$FIXES" ]    && { echo "### 🐛 Bug Fixes"; echo ""; echo "$FIXES"; }
+            [ -n "$PERF" ]     && { echo "### ⚡ Performance"; echo ""; echo "$PERF"; }
+            [ -n "$REFACTOR" ] && { echo "### ♻️ Refactoring"; echo ""; echo "$REFACTOR"; }
+            [ -n "$DOCS" ]     && { echo "### 📝 Documentation"; echo ""; echo "$DOCS"; }
+            [ -n "$CHORE" ]    && { echo "### 🔧 Chores"; echo ""; echo "$CHORE"; }
+            [ -n "$OTHER" ]    && { echo "### 📦 Other"; echo ""; echo "$OTHER"; }
+            echo ""
+            echo "### 📥 Installation"
+            echo ""
+            echo "Download the \`.vsix\` file below and install via:"
+            echo '```'
+            echo "code --install-extension claude-git-commit-${{ steps.version.outputs.version }}.vsix"
+            echo '```'
+            if [ -n "$PREV_TAG" ]; then
+              echo ""
+              echo "**Full changelog:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURRENT_TAG}"
+            fi
+          } > RELEASE_NOTES.md
+
+          echo "---- release notes ----"
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: claude-git-commit-${{ steps.version.outputs.version }}.vsix
+          draft: false
+          prerelease: false
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::warning::VSCE_PAT secret is not set — skipping marketplace publish"
+            exit 0
+          fi
+          npx vsce publish --no-dependencies --packagePath "claude-git-commit-${{ steps.version.outputs.version }}.vsix"
