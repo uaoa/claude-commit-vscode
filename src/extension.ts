@@ -29,12 +29,10 @@ function showAutoCloseMessage(
 
     // Show message with countdown hint in text
     const messageWithHint = `${message} (${timeoutSeconds}s)`;
-    vscode.window
-      .showInformationMessage(messageWithHint, ...buttons)
-      .then((result) => {
-        clearTimeout(timer);
-        resolveOnce(result);
-      });
+    vscode.window.showInformationMessage(messageWithHint, ...buttons).then((result) => {
+      clearTimeout(timer);
+      resolveOnce(result);
+    });
   });
 }
 
@@ -69,10 +67,7 @@ function getRepositoryFromSourceControl(
  * 2. The repository containing the currently active editor's file
  * 3. Falls back to the first repository if neither is available
  */
-function getActiveRepository(
-  git: GitAPI,
-  sourceControl?: vscode.SourceControl
-): GitRepository | undefined {
+function getActiveRepository(git: GitAPI, sourceControl?: vscode.SourceControl): GitRepository | undefined {
   if (git.repositories.length === 0) {
     return undefined;
   }
@@ -134,13 +129,8 @@ export function activate(context: vscode.ExtensionContext): void {
         const claudeCodeManaged = config.get<boolean>("claudeCodeManaged", false);
         const preferredMethod = config.get<string>("preferredMethod", "auto");
 
-        if (
-          repo.state.indexChanges.length === 0 &&
-          repo.state.workingTreeChanges.length === 0
-        ) {
-          vscode.window.showWarningMessage(
-            "No changes to commit. Stage files first."
-          );
+        if (repo.state.indexChanges.length === 0 && repo.state.workingTreeChanges.length === 0) {
+          vscode.window.showWarningMessage("No changes to commit. Stage files first.");
           return;
         }
 
@@ -155,19 +145,14 @@ export function activate(context: vscode.ExtensionContext): void {
           },
           async (progress) => {
             try {
-              const config =
-                vscode.workspace.getConfiguration("claudeCommit");
+              const config = vscode.workspace.getConfiguration("claudeCommit");
               const language = config.get<Language>("language", "en");
 
               const updateProgress = (message: string): void => {
                 progress.report({ message });
               };
 
-              commitMessage = await generateCommitMessage(
-                repo,
-                language,
-                updateProgress
-              );
+              commitMessage = await generateCommitMessage(repo, language, updateProgress);
             } catch (error) {
               generationError = error as Error;
             }
@@ -175,9 +160,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
 
         if (generationError) {
-          const errorMessage = generationError instanceof Error
-            ? generationError.message
-            : String(generationError);
+          const errorMessage = generationError instanceof Error ? generationError.message : String(generationError);
           logError("Failed to generate commit", generationError);
           const action = await vscode.window.showErrorMessage(
             `Failed to generate commit: ${errorMessage}`,
@@ -195,24 +178,16 @@ export function activate(context: vscode.ExtensionContext): void {
           // Show different buttons based on mode
           const isManagedMode = claudeCodeManaged && preferredMethod === "cli";
 
-          const buttons = isManagedMode
-            ? ["Custom prompt"]
-            : ["Edit with feedback"];
+          const buttons = isManagedMode ? ["Custom prompt"] : ["Edit with feedback"];
 
           // Get auto-close timeout from config
           const autoCloseSeconds = config.get<number>("messageAutoCloseSeconds", 5);
 
           // Show message with auto-close (or without if set to 0)
-          const action = autoCloseSeconds > 0
-            ? await showAutoCloseMessage(
-                "Commit message generated!",
-                autoCloseSeconds,
-                ...buttons
-              )
-            : await vscode.window.showInformationMessage(
-                "Commit message generated!",
-                ...buttons
-              );
+          const action =
+            autoCloseSeconds > 0
+              ? await showAutoCloseMessage("Commit message generated!", autoCloseSeconds, ...buttons)
+              : await vscode.window.showInformationMessage("Commit message generated!", ...buttons);
 
           if (action === "Edit with feedback") {
             await handleEditWithFeedback(repo, commitMessage);
@@ -275,8 +250,7 @@ export function activate(context: vscode.ExtensionContext): void {
 async function handleCustomPrompt(repo: GitRepository): Promise<void> {
   const customPrompt = await vscode.window.showInputBox({
     prompt: "Enter custom prompt to guide commit message generation",
-    placeHolder:
-      "e.g., 'Focus on the API changes', 'Use conventional commits format', 'Be more concise'",
+    placeHolder: "e.g., 'Focus on the API changes', 'Use conventional commits format', 'Be more concise'",
     validateInput: (value) => {
       if (!value || value.trim().length === 0) {
         return "Please provide a custom prompt";
@@ -304,12 +278,7 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
           progress.report({ message });
         };
 
-        const newMessage = await generateCommitMessage(
-          repo,
-          language,
-          updateProgress,
-          customPrompt
-        );
+        const newMessage = await generateCommitMessage(repo, language, updateProgress, customPrompt);
 
         if (newMessage) {
           repo.inputBox.value = newMessage;
@@ -330,22 +299,16 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
         }
       } catch (error) {
         const err = error as Error;
-        vscode.window.showErrorMessage(
-          `Failed to regenerate: ${err.message}`
-        );
+        vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
       }
     }
   );
 }
 
-async function handleEditWithFeedback(
-  repo: GitRepository,
-  currentMessage: string
-): Promise<void> {
+async function handleEditWithFeedback(repo: GitRepository, currentMessage: string): Promise<void> {
   const feedback = await vscode.window.showInputBox({
     prompt: "Enter your feedback to improve the commit message",
-    placeHolder:
-      "e.g., 'Make it shorter', 'Focus on the API changes', 'Add breaking change note'",
+    placeHolder: "e.g., 'Make it shorter', 'Focus on the API changes', 'Add breaking change note'",
     validateInput: (value) => {
       if (!value || value.trim().length === 0) {
         return "Please provide some feedback";
@@ -373,22 +336,12 @@ async function handleEditWithFeedback(
           progress.report({ message });
         };
 
-        const newMessage = await editCommitMessage(
-          repo,
-          currentMessage,
-          feedback,
-          language,
-          updateProgress
-        );
+        const newMessage = await editCommitMessage(repo, currentMessage, feedback, language, updateProgress);
 
         if (newMessage) {
           repo.inputBox.value = newMessage;
 
-          const action = await vscode.window.showInformationMessage(
-            "Commit message regenerated!",
-            "Edit again",
-            "OK"
-          );
+          const action = await vscode.window.showInformationMessage("Commit message regenerated!", "Edit again", "OK");
 
           if (action === "Edit again") {
             await handleEditWithFeedback(repo, newMessage);
@@ -396,9 +349,7 @@ async function handleEditWithFeedback(
         }
       } catch (error) {
         const err = error as Error;
-        vscode.window.showErrorMessage(
-          `Failed to regenerate: ${err.message}`
-        );
+        vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
       }
     }
   );

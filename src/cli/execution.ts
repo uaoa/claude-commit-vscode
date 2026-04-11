@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { findClaudeCliPath } from "./detection";
-import { ProgressCallback, Model } from "../types";
+import type { ProgressCallback, Model } from "../types";
 import { log, logError, logCommand } from "../utils/logger";
 
 const execAsync = promisify(exec);
@@ -28,10 +28,7 @@ export async function generateWithCLI(
   const privacyMode = config.get<boolean>("privacyMode", false);
 
   const tmpDir = os.tmpdir();
-  const promptFile = path.join(
-    tmpDir,
-    `claude-commit-prompt-${Date.now()}.txt`
-  );
+  const promptFile = path.join(tmpDir, `claude-commit-prompt-${Date.now()}.txt`);
 
   try {
     await fs.promises.writeFile(promptFile, prompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
@@ -41,14 +38,13 @@ export async function generateWithCLI(
     }
 
     const cliFlags = `-p --no-session-persistence --model ${model} --tools "" --effort low`;
-    const baseCommand = process.platform === "win32"
-      ? `type "${promptFile}" | ${escapedCliPath} ${cliFlags}`
-      : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
+    const baseCommand =
+      process.platform === "win32"
+        ? `type "${promptFile}" | ${escapedCliPath} ${cliFlags}`
+        : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
 
     // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
-    const command = process.platform === "win32"
-      ? baseCommand
-      : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
+    const command = process.platform === "win32" ? baseCommand : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
 
     logCommand(command);
 
@@ -71,7 +67,7 @@ export async function generateWithCLI(
     }
 
     if (!stdout || stdout.trim().length === 0) {
-      logError("Empty response from CLI", new Error(`Command: ${command}, stderr: ${stderr || 'none'}`));
+      logError("Empty response from CLI", new Error(`Command: ${command}, stderr: ${stderr || "none"}`));
       throw new Error("Empty response from CLI. Check Output panel for details.");
     }
 
@@ -87,8 +83,7 @@ export async function generateWithCLI(
 
     const multiLine = config.get<boolean>("multiLineCommit", false);
     if (multiLine) {
-      const conventionalCommitPattern =
-        /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
+      const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
       let startIndex = -1;
 
       for (let i = 0; i < lines.length; i++) {
@@ -103,8 +98,7 @@ export async function generateWithCLI(
       }
     }
 
-    const conventionalCommitPattern =
-      /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
+    const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
 
     for (let i = lines.length - 1; i >= 0; i--) {
       if (conventionalCommitPattern.test(lines[i])) {
@@ -116,9 +110,7 @@ export async function generateWithCLI(
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
     if (err.killed) {
-      throw new Error(
-        "CLI process timed out after 2 minutes. Try a smaller diff or check your connection."
-      );
+      throw new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
     }
     if (err.code === "ENOENT") {
       throw new Error(`CLI executable not found at: ${cliPath}`);
@@ -164,18 +156,15 @@ export async function generateWithCLIManaged(
   const privacyMode = config.get<boolean>("privacyMode", false);
 
   const tmpDir = os.tmpdir();
-  const promptFile = path.join(
-    tmpDir,
-    `claude-commit-prompt-${Date.now()}.txt`
-  );
-  const systemPromptFile = path.join(
-    tmpDir,
-    `claude-commit-system-${Date.now()}.txt`
-  );
+  const promptFile = path.join(tmpDir, `claude-commit-prompt-${Date.now()}.txt`);
+  const systemPromptFile = path.join(tmpDir, `claude-commit-system-${Date.now()}.txt`);
 
   try {
     await fs.promises.writeFile(promptFile, prompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
-    await fs.promises.writeFile(systemPromptFile, systemPrompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
+    await fs.promises.writeFile(systemPromptFile, systemPrompt, {
+      encoding: "utf-8",
+      mode: privacyMode ? 0o600 : 0o644,
+    });
 
     if (progressCallback) {
       progressCallback("Using haiku model (managed mode)...");
@@ -183,14 +172,13 @@ export async function generateWithCLIManaged(
 
     const systemPromptEscaped = systemPromptFile.includes(" ") ? `"${systemPromptFile}"` : systemPromptFile;
     const cliFlags = `-p --no-session-persistence --model haiku --tools "" --effort low --system-prompt "$(cat ${systemPromptEscaped})"`;
-    const baseCommand = process.platform === "win32"
-      ? `type "${promptFile}" | ${escapedCliPath} -p --no-session-persistence --model haiku --tools "" --effort low`
-      : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
+    const baseCommand =
+      process.platform === "win32"
+        ? `type "${promptFile}" | ${escapedCliPath} -p --no-session-persistence --model haiku --tools "" --effort low`
+        : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
 
     // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
-    const command = process.platform === "win32"
-      ? baseCommand
-      : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
+    const command = process.platform === "win32" ? baseCommand : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
 
     logCommand(command);
 
@@ -214,9 +202,7 @@ export async function generateWithCLIManaged(
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
     if (err.killed) {
-      throw new Error(
-        "CLI process timed out after 2 minutes. Try a smaller diff or check your connection."
-      );
+      throw new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
     }
     if (err.code === "ENOENT") {
       throw new Error(`CLI executable not found at: ${cliPath}`);
@@ -254,9 +240,7 @@ export async function generateWithAPI(
   const apiKey = config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
-      "ANTHROPIC_API_KEY not found. Set it in extension settings or environment variable."
-    );
+    throw new Error("ANTHROPIC_API_KEY not found. Set it in extension settings or environment variable.");
   }
 
   const modelSetting = config.get<Model>("model", "haiku");
@@ -287,14 +271,10 @@ export async function generateWithAPI(
   } catch (error) {
     const err = error as Error & { code?: string; status?: number };
     if (err.code === "MODULE_NOT_FOUND") {
-      throw new Error(
-        "Install @anthropic-ai/sdk to use API: npm install @anthropic-ai/sdk"
-      );
+      throw new Error("Install @anthropic-ai/sdk to use API: npm install @anthropic-ai/sdk");
     }
     if (err.status === 401) {
-      throw new Error(
-        "Invalid API key. Check your ANTHROPIC_API_KEY in settings."
-      );
+      throw new Error("Invalid API key. Check your ANTHROPIC_API_KEY in settings.");
     }
     if (err.status === 429) {
       throw new Error("Rate limit exceeded. Please wait and try again.");

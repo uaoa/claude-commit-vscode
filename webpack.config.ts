@@ -12,7 +12,8 @@ const config: Configuration = {
     devtoolModuleFilenameTemplate: '../[resource-path]'
   },
   externals: {
-    vscode: 'commonjs vscode'
+    vscode: 'commonjs vscode',
+    '@anthropic-ai/sdk': 'commonjs @anthropic-ai/sdk'
   },
   resolve: {
     extensions: ['.ts', '.js']

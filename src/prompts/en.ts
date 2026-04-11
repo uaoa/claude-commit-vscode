@@ -38,7 +38,8 @@ Return ONLY the commit message (one line), no explanations.`;
 function getStyleInstructions(style: string, multiLine: boolean): string {
   switch (style) {
     case "conventional":
-      return multiLine ? `RESPONSE FORMAT:
+      return multiLine
+        ? `RESPONSE FORMAT:
 <type>(<scope>): <subject>
 
 <body>
@@ -59,7 +60,8 @@ Implemented authentication via Google OAuth 2.0.
 Added token handling and refresh mechanism.
 Updated configuration to support new providers.
 
-Closes #123` : `STRICT RULES:
+Closes #123`
+        : `STRICT RULES:
 - Format: <type>(<scope>): <subject>
 - Type: feat/fix/refactor/docs/style/test/chore/perf
 - Subject in PAST TENSE (what WAS DONE), max 50 characters, no period
@@ -74,7 +76,8 @@ refactor(store): optimized cart state management
 docs(readme): updated installation instructions`;
 
     case "prefix":
-      return multiLine ? `RESPONSE FORMAT:
+      return multiLine
+        ? `RESPONSE FORMAT:
 <type>: <subject>
 
 <body>
@@ -95,7 +98,8 @@ feat: added Google OAuth provider
 Implemented authentication via Google OAuth 2.0.
 Added token handling and refresh mechanism.
 
-Closes #123` : `STRICT RULES:
+Closes #123`
+        : `STRICT RULES:
 - Format: <type>: <subject>
 - Type: feat/fix/refactor/docs/style/test/chore/perf
 - Subject in PAST TENSE (what WAS DONE), max 50 characters, no period
@@ -109,7 +113,8 @@ refactor: optimized cart state management
 docs: updated installation instructions`;
 
     case "default":
-      return multiLine ? `RESPONSE FORMAT:
+      return multiLine
+        ? `RESPONSE FORMAT:
 <subject>
 
 <body>
@@ -129,7 +134,8 @@ added Google OAuth provider
 Implemented authentication via Google OAuth 2.0.
 Added token handling and refresh mechanism.
 
-Closes #123` : `STRICT RULES:
+Closes #123`
+        : `STRICT RULES:
 - Format: simple description without type/scope prefix
 - Subject in PAST TENSE (what WAS DONE), max 50 characters, no period
 - Use verbs like: added, fixed, updated, removed, refactored
@@ -146,7 +152,13 @@ updated installation instructions`;
   }
 }
 
-export function getManagedPrompt(diff: string, stats: string, keepCoAuthoredBy: boolean, multiline: boolean, customPrompt: string): { systemPrompt: string; userPrompt: string } {
+export function getManagedPrompt(
+  diff: string,
+  stats: string,
+  keepCoAuthoredBy: boolean,
+  multiline: boolean,
+  customPrompt: string
+): { systemPrompt: string; userPrompt: string } {
   const diffContent = diff.slice(0, 6000);
 
   let systemPrompt = `You are a "Git Commit Message Generator" function. You have no conversational ability. Output ONLY the commit message in plain text.
@@ -183,12 +195,7 @@ ${diffContent}`;
   return { systemPrompt, userPrompt };
 }
 
-export function getEditPrompt(
-  currentMessage: string,
-  userFeedback: string,
-  diff: string,
-  stats: string
-): string {
+export function getEditPrompt(currentMessage: string, userFeedback: string, diff: string, stats: string): string {
   return `Current commit message:
 ${currentMessage}
 

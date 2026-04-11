@@ -1,4 +1,4 @@
-import { Language } from "../types";
+import type { Language } from "../types";
 import * as en from "./en";
 import * as ua from "./ua";
 import * as zh from "./zh";
@@ -15,16 +15,21 @@ export function createGenerationPrompt(
 ): string {
   // If custom style and template provided, use it
   if (commitStyle === "custom" && customTemplate) {
-    return customTemplate
-      .replace(/\{diff\}/g, diff.slice(0, 6000))
-      .replace(/\{stats\}/g, stats);
+    return customTemplate.replace(/\{diff\}/g, diff.slice(0, 6000)).replace(/\{stats\}/g, stats);
   }
 
   const module = promptModules[lang];
   return module.getGenerationPrompt(diff, stats, multiLine, commitStyle);
 }
 
-export function createManagedPrompt(lang: Language, diff: string, stats: string, keepCoAuthoredBy: boolean, multiline: boolean, customPrompt: string): { systemPrompt: string; userPrompt: string } {
+export function createManagedPrompt(
+  lang: Language,
+  diff: string,
+  stats: string,
+  keepCoAuthoredBy: boolean,
+  multiline: boolean,
+  customPrompt: string
+): { systemPrompt: string; userPrompt: string } {
   const module = promptModules[lang];
   return module.getManagedPrompt(diff, stats, keepCoAuthoredBy, multiline, customPrompt);
 }

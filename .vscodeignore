@@ -1,6 +1,10 @@
-.vscode/**
-.vscode-test/**
-node_modules/**
-.gitignore
-.eslintrc.json
-webpack.config.js
+**
+!dist/extension.js
+!package.json
+!README.md
+!LICENSE
+!icon.png
+!node_modules/@anthropic-ai/sdk/package.json
+!node_modules/@anthropic-ai/sdk/LICENSE
+!node_modules/@anthropic-ai/sdk/**/*.js
+!node_modules/@anthropic-ai/sdk/**/*.d.ts

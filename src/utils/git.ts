@@ -1,6 +1,6 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { DiffResult, DiffSource } from "../types";
+import type { DiffResult, DiffSource } from "../types";
 
 const execAsync = promisify(exec);
 
@@ -44,34 +44,26 @@ async function getAllDiff(repoPath: string): Promise<DiffResult> {
   }
 
   // New repository without commits - combine staged and unstaged diffs
-  const [stagedDiff, stagedStats, unstagedDiff, unstagedStats] =
-    await Promise.all([
-      execAsync("git diff --cached --unified=1", {
-        cwd: repoPath,
-        maxBuffer: 10 * 1024 * 1024,
-      }),
-      execAsync("git diff --cached --stat", { cwd: repoPath }),
-      execAsync("git diff --unified=1", {
-        cwd: repoPath,
-        maxBuffer: 10 * 1024 * 1024,
-      }),
-      execAsync("git diff --stat", { cwd: repoPath }),
-    ]);
+  const [stagedDiff, stagedStats, unstagedDiff, unstagedStats] = await Promise.all([
+    execAsync("git diff --cached --unified=1", {
+      cwd: repoPath,
+      maxBuffer: 10 * 1024 * 1024,
+    }),
+    execAsync("git diff --cached --stat", { cwd: repoPath }),
+    execAsync("git diff --unified=1", {
+      cwd: repoPath,
+      maxBuffer: 10 * 1024 * 1024,
+    }),
+    execAsync("git diff --stat", { cwd: repoPath }),
+  ]);
 
-  const diff = [stagedDiff.stdout, unstagedDiff.stdout]
-    .filter(Boolean)
-    .join("\n");
-  const stats = [stagedStats.stdout, unstagedStats.stdout]
-    .filter(Boolean)
-    .join("\n");
+  const diff = [stagedDiff.stdout, unstagedDiff.stdout].filter(Boolean).join("\n");
+  const stats = [stagedStats.stdout, unstagedStats.stdout].filter(Boolean).join("\n");
 
   return { diff, stats };
 }
 
-export async function getDiff(
-  repoPath: string,
-  diffSource: DiffSource = "auto"
-): Promise<DiffResult> {
+export async function getDiff(repoPath: string, diffSource: DiffSource = "auto"): Promise<DiffResult> {
   try {
     if (diffSource === "staged") {
       return await getStagedDiff(repoPath);

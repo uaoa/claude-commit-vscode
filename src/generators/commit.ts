@@ -1,17 +1,8 @@
 import * as vscode from "vscode";
-import {
-  GitRepository,
-  Language,
-  ProgressCallback,
-  GenerationMethod,
-  DiffSource,
-} from "../types";
+import type { GitRepository, Language, ProgressCallback, GenerationMethod, DiffSource } from "../types";
 import { getDiff } from "../utils/git";
 import { createGenerationPrompt, createEditPrompt, createManagedPrompt } from "../prompts/generation";
-import {
-  hasClaudeCodeCLI,
-  promptForCliPath,
-} from "../cli/detection";
+import { hasClaudeCodeCLI, promptForCliPath } from "../cli/detection";
 import { generateWithCLI, generateWithCLIManaged, generateWithAPI } from "../cli/execution";
 
 export async function generateCommitMessage(
@@ -35,9 +26,7 @@ export async function generateCommitMessage(
     }
 
     if (!(await hasClaudeCodeCLI())) {
-      throw new Error(
-        "Claude Code managed mode requires Claude Code CLI. Please install it or disable managed mode."
-      );
+      throw new Error("Claude Code managed mode requires Claude Code CLI. Please install it or disable managed mode.");
     }
 
     const diffSource = config.get<DiffSource>("diffSource", "auto");
@@ -49,7 +38,14 @@ export async function generateCommitMessage(
 
     const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
     const multiLine = config.get<boolean>("multiLineCommit", false);
-    const { systemPrompt, userPrompt } = createManagedPrompt(language, diff, stats, keepCoAuthoredBy, multiLine, customPrompt);
+    const { systemPrompt, userPrompt } = createManagedPrompt(
+      language,
+      diff,
+      stats,
+      keepCoAuthoredBy,
+      multiLine,
+      customPrompt
+    );
     return await generateWithCLIManaged(userPrompt, systemPrompt, progressCallback);
   }
 
@@ -153,11 +149,8 @@ export async function generateCommitMessage(
     }
   }
 
-  throw new Error(
-    "No generation method available. Install Claude Code CLI or set API key."
-  );
+  throw new Error("No generation method available. Install Claude Code CLI or set API key.");
 }
-
 
 export async function editCommitMessage(
   repo: GitRepository,
@@ -181,13 +174,7 @@ export async function editCommitMessage(
     progressCallback("Regenerating based on feedback...");
   }
 
-  const prompt = createEditPrompt(
-    currentMessage,
-    userFeedback,
-    diff,
-    stats,
-    language
-  );
+  const prompt = createEditPrompt(currentMessage, userFeedback, diff, stats, language);
 
   const preferredMethod = config.get<GenerationMethod>("preferredMethod", "auto");
 

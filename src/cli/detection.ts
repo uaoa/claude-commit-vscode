@@ -73,13 +73,12 @@ async function findCliWithGlob(pattern: string): Promise<string | null> {
   return null;
 }
 
-
 export async function findClaudeCliPath(): Promise<string | null> {
   // 1. Check user settings
   const config = vscode.workspace.getConfiguration("claudeCommit");
   const userPath = config.get<string>("cliPath");
 
-  if (userPath && userPath.trim()) {
+  if (userPath?.trim()) {
     log(`Checking user-configured CLI path: ${userPath}`);
     if (await fileExists(userPath)) {
       log(`Found CLI at user-configured path: ${userPath}`);
@@ -174,13 +173,10 @@ export async function promptForCliPath(): Promise<string | null> {
       canSelectFolders: false,
       canSelectMany: false,
       title: "Select Claude CLI Executable",
-      filters:
-        process.platform === "win32"
-          ? { Executable: ["exe", "cmd", "bat"] }
-          : undefined,
+      filters: process.platform === "win32" ? { Executable: ["exe", "cmd", "bat"] } : undefined,
     });
 
-    if (fileUri && fileUri[0]) {
+    if (fileUri?.[0]) {
       const selectedPath = fileUri[0].fsPath;
       await saveCliPath(selectedPath);
       return selectedPath;
@@ -188,10 +184,7 @@ export async function promptForCliPath(): Promise<string | null> {
   } else if (result === "Enter Path Manually") {
     const manualPath = await vscode.window.showInputBox({
       prompt: "Enter the full path to Claude CLI executable",
-      placeHolder:
-        process.platform === "win32"
-          ? "C:\\path\\to\\claude.cmd"
-          : "/usr/local/bin/claude",
+      placeHolder: process.platform === "win32" ? "C:\\path\\to\\claude.cmd" : "/usr/local/bin/claude",
       validateInput: async (value) => {
         if (!value) return "Path cannot be empty";
         if (!(await fileExists(value))) {
