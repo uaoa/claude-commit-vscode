@@ -259,8 +259,16 @@ export async function generateWithAPI(
     );
   }
 
+  const modelSetting = config.get<Model>("model", "haiku");
+  const modelMap: Record<Model, string> = {
+    haiku: "claude-haiku-4-5-20251001",
+    sonnet: "claude-sonnet-4-6",
+    opus: "claude-opus-4-6",
+  };
+  const apiModel = modelMap[modelSetting] ?? modelMap.haiku;
+
   if (progressCallback) {
-    progressCallback("Connecting to Anthropic API...");
+    progressCallback(`Connecting to Anthropic API (${modelSetting})...`);
   }
 
   try {
@@ -269,7 +277,7 @@ export async function generateWithAPI(
     const anthropic = new Anthropic({ apiKey });
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: apiModel,
       max_tokens: 1000,
       temperature: 0.3,
       messages: [{ role: "user", content: prompt }],
