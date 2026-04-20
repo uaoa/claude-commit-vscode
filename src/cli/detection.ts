@@ -44,7 +44,26 @@ async function fileExists(filePath: string): Promise<boolean> {
     await fs.promises.access(filePath, fs.constants.X_OK);
     return true;
   } catch {
-    return false;
+    // Fallback for symlinks (e.g. WSL ~/.local/bin/claude -> versioned path)
+    // and filesystems where X_OK check is unreliable. Resolve the symlink
+    // and check the target for existence + executability.
+    try {
+      const resolved = await fs.promises.realpath(filePath);
+      if (resolved !== filePath) {
+        await fs.promises.access(resolved, fs.constants.X_OK);
+        return true;
+      }
+    } catch {
+      // Fall through
+    }
+    // Last resort: plain existence check. spawn() follows symlinks natively,
+    // so if the path exists we let the shell decide whether it can execute it.
+    try {
+      await fs.promises.access(filePath, fs.constants.F_OK);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
