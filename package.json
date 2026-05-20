@@ -2,7 +2,7 @@
 	"name": "claude-git-commit",
 	"displayName": "Claude Git Commit",
 	"description": "AI-powered git commit message generator using Claude AI",
-	"version": "1.0.18",
+	"version": "1.0.19",
 	"publisher": "ZakhariiMelnyk",
 	"icon": "icon.png",
 	"engines": {
@@ -177,6 +177,20 @@
 					"markdownDescription": "Custom prompt template. Use `{diff}` for diff content and `{stats}` for change statistics. Only used when commitStyle is set to 'custom'. Example: `Generate a commit message for:\n\n{stats}\n\n{diff}`",
 					"editPresentation": "multilineText",
 					"order": 13
+				},
+				"claudeCommit.commitTense": {
+					"type": "string",
+					"enum": [
+						"imperative",
+						"past"
+					],
+					"default": "imperative",
+					"enumDescriptions": [
+						"Imperative mood (Git best practice) - 'add feature', 'fix bug'",
+						"Past tense - 'added feature', 'fixed bug'"
+					],
+					"markdownDescription": "Tense/mood for commit subjects. **Imperative** (default) follows the official Git convention - the subject reads as a command (e.g. 'add login button'). **Past tense** describes what was done (e.g. 'added login button').",
+					"order": 14
 				}
 			}
 		}
