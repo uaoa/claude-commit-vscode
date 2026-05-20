@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type { GitRepository, Language, ProgressCallback, GenerationMethod, DiffSource } from "../types";
+import type { GitRepository, Language, ProgressCallback, GenerationMethod, DiffSource, CommitTense } from "../types";
 import { getDiff } from "../utils/git";
 import { createGenerationPrompt, createEditPrompt, createManagedPrompt } from "../prompts/generation";
 import { hasClaudeCodeCLI, promptForCliPath } from "../cli/detection";
@@ -38,13 +38,15 @@ export async function generateCommitMessage(
 
     const keepCoAuthoredBy = config.get<boolean>("keepCoAuthoredBy", false);
     const multiLine = config.get<boolean>("multiLineCommit", false);
+    const commitTense = config.get<CommitTense>("commitTense", "imperative");
     const { systemPrompt, userPrompt } = createManagedPrompt(
       language,
       diff,
       stats,
       keepCoAuthoredBy,
       multiLine,
-      customPrompt
+      customPrompt,
+      commitTense
     );
     return await generateWithCLIManaged(userPrompt, systemPrompt, progressCallback);
   }
@@ -68,8 +70,9 @@ export async function generateCommitMessage(
   const multiLine = config.get<boolean>("multiLineCommit", false);
   const commitStyle = config.get<string>("commitStyle", "conventional");
   const customTemplate = config.get<string>("customPromptTemplate", "");
+  const commitTense = config.get<CommitTense>("commitTense", "imperative");
 
-  const prompt = createGenerationPrompt(diff, stats, language, multiLine, commitStyle, customTemplate);
+  const prompt = createGenerationPrompt(diff, stats, language, multiLine, commitStyle, customTemplate, commitTense);
 
   let commitMessage: string | undefined;
   let cliNotFound = false;

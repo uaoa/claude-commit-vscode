@@ -1,11 +1,14 @@
+type Tense = "imperative" | "past";
+
 export function getGenerationPrompt(
   diff: string,
   stats: string,
   multiLine: boolean,
-  commitStyle: string = "conventional"
+  commitStyle: string = "conventional",
+  tense: Tense = "imperative"
 ): string {
   const diffContent = diff.slice(0, 6000);
-  const styleInstructions = getStyleInstructions(commitStyle, multiLine);
+  const styleInstructions = getStyleInstructions(commitStyle, multiLine, tense);
 
   if (multiLine) {
     return `分析 git 变更并生成详细 commit message。
@@ -18,7 +21,7 @@ ${diffContent}
 
 ${styleInstructions}
 
-仅返回指定格式的 commit message，不要有任何解释。`;
+仅返回指定格式的 commit message，不要有任何解释，不要 markdown，不要代码块（不要 \`\`\`）。`;
   }
 
   return `分析 git 变更并生成 commit message。
@@ -31,10 +34,37 @@ ${diffContent}
 
 ${styleInstructions}
 
-仅返回 commit message（一行），不要有任何解释。`;
+仅返回 commit message（一行），不要有任何解释，不要 markdown，不要代码块（不要 \`\`\`）。`;
 }
 
-function getStyleInstructions(style: string, multiLine: boolean): string {
+function getTenseRules(tense: Tense): { instruction: string; wrong: string; right: string; verbs: string } {
+  if (tense === "past") {
+    return {
+      instruction: "Subject 使用过去时态（描述完成了什么），最多 50 个字符，不加句号",
+      wrong: '错误示例："添加功能"、"修复 bug"、"更新样式"',
+      right: '正确示例："添加了功能"、"修复了 bug"、"更新了样式"',
+      verbs: "添加了、修复了、更新了、删除了、重构了",
+    };
+  }
+  return {
+    instruction: "Subject 使用祈使句（命令式，现在时），最多 50 个字符，不加句号",
+    wrong: '错误示例："添加了功能"、"修复了 bug"、"更新了样式"',
+    right: '正确示例："添加功能"、"修复 bug"、"更新样式"',
+    verbs: "添加、修复、更新、删除、重构",
+  };
+}
+
+function getStyleInstructions(style: string, multiLine: boolean, tense: Tense): string {
+  const t = getTenseRules(tense);
+  const past = tense === "past";
+  const a = past ? "添加了" : "添加";
+  const b = past ? "修复了" : "修复";
+  const c = past ? "优化了" : "优化";
+  const d = past ? "更新了" : "更新";
+  const bodyImpl = past ? "实现了" : "实现";
+  const bodyAdd = past ? "添加了" : "添加";
+  const bodyUpd = past ? "更新了" : "更新";
+
   switch (style) {
     case "conventional":
       return multiLine
@@ -46,33 +76,33 @@ function getStyleInstructions(style: string, multiLine: boolean): string {
 <footer>
 
 规则：
-- Subject：过去时态，最多 50 个字符，不加句号
+- ${t.instruction}
 - Body：详细描述变更内容（改了什么、为什么改）
 - Footer：Breaking changes、issue 引用
 - Type：feat/fix/refactor/docs/style/test/chore/perf
-- 使用动词：添加了、修复了、更新了、删除了、重构了
+- 使用动词：${t.verbs}
 
 示例：
-feat(auth): 添加了 Google OAuth 登录
+feat(auth): ${a} Google OAuth 登录
 
-实现了通过 Google OAuth 2.0 的身份验证。
-添加了令牌处理和刷新机制。
-更新了配置以支持新的登录提供商。
+${bodyImpl}通过 Google OAuth 2.0 的身份验证。
+${bodyAdd}令牌处理和刷新机制。
+${bodyUpd}配置以支持新的登录提供商。
 
 Closes #123`
         : `严格规则：
 - 格式：<type>(<scope>): <subject>
 - Type：feat/fix/refactor/docs/style/test/chore/perf
-- Subject 使用过去时态（描述完成了什么），最多 50 个字符，不加句号
-- 使用动词：添加了、修复了、更新了、删除了、重构了
-- 错误示例："添加功能"、"修复 bug"、"更新样式"
-- 正确示例："添加了功能"、"修复了 bug"、"更新了样式"
+- ${t.instruction}
+- 使用动词：${t.verbs}
+- ${t.wrong}
+- ${t.right}
 
 示例：
-feat(auth): 添加了 Google OAuth 登录
-fix(api): 修复了 user endpoint 的验证错误
-refactor(store): 优化了购物车状态管理
-docs(readme): 更新了安装说明`;
+feat(auth): ${a} Google OAuth 登录
+fix(api): ${b} user endpoint 的验证错误
+refactor(store): ${c}购物车状态管理
+docs(readme): ${d}安装说明`;
 
     case "prefix":
       return multiLine
@@ -84,32 +114,32 @@ docs(readme): 更新了安装说明`;
 <footer>
 
 规则：
-- Subject：过去时态，最多 50 个字符，不加句号
+- ${t.instruction}
 - Body：详细描述变更内容（改了什么、为什么改）
 - Footer：Breaking changes、issue 引用
 - Type：feat/fix/refactor/docs/style/test/chore/perf
-- 使用动词：添加了、修复了、更新了、删除了、重构了
+- 使用动词：${t.verbs}
 - 不要 scope 括号
 
 示例：
-feat: 添加了 Google OAuth 登录
+feat: ${a} Google OAuth 登录
 
-实现了通过 Google OAuth 2.0 的身份验证。
-添加了令牌处理和刷新机制。
+${bodyImpl}通过 Google OAuth 2.0 的身份验证。
+${bodyAdd}令牌处理和刷新机制。
 
 Closes #123`
         : `严格规则：
 - 格式：<type>: <subject>
 - Type：feat/fix/refactor/docs/style/test/chore/perf
-- Subject 使用过去时态（描述完成了什么），最多 50 个字符，不加句号
-- 使用动词：添加了、修复了、更新了、删除了、重构了
+- ${t.instruction}
+- 使用动词：${t.verbs}
 - 不要 scope 括号
 
 示例：
-feat: 添加了 Google OAuth 登录
-fix: 修复了 user endpoint 的验证错误
-refactor: 优化了购物车状态管理
-docs: 更新了安装说明`;
+feat: ${a} Google OAuth 登录
+fix: ${b} user endpoint 的验证错误
+refactor: ${c}购物车状态管理
+docs: ${d}安装说明`;
 
     case "default":
       return multiLine
@@ -121,33 +151,33 @@ docs: 更新了安装说明`;
 <footer>
 
 规则：
-- Subject：过去时态，清晰描述，最多 50 个字符，不加句号
+- ${t.instruction}
 - Body：详细描述变更内容（改了什么、为什么改）
 - Footer：Breaking changes、issue 引用
-- 使用动词：添加了、修复了、更新了、删除了、重构了
+- 使用动词：${t.verbs}
 - 不要 TYPE 前缀，不要 SCOPE
 
 示例：
-添加了 Google OAuth 登录
+${a} Google OAuth 登录
 
-实现了通过 Google OAuth 2.0 的身份验证。
-添加了令牌处理和刷新机制。
+${bodyImpl}通过 Google OAuth 2.0 的身份验证。
+${bodyAdd}令牌处理和刷新机制。
 
 Closes #123`
         : `严格规则：
 - 格式：简单描述，不要 type/scope 前缀
-- Subject 使用过去时态（描述完成了什么），最多 50 个字符，不加句号
-- 使用动词：添加了、修复了、更新了、删除了、重构了
+- ${t.instruction}
+- 使用动词：${t.verbs}
 - 不要 TYPE 前缀 (feat/fix/等)，不要 SCOPE
 
 示例：
-添加了 Google OAuth 登录
-修复了 user endpoint 的验证错误
-优化了购物车状态管理
-更新了安装说明`;
+${a} Google OAuth 登录
+${b} user endpoint 的验证错误
+${c}购物车状态管理
+${d}安装说明`;
 
     default:
-      return getStyleInstructions("conventional", multiLine);
+      return getStyleInstructions("conventional", multiLine, tense);
   }
 }
 
@@ -156,17 +186,22 @@ export function getManagedPrompt(
   stats: string,
   keepCoAuthoredBy: boolean,
   multiline: boolean,
-  customPrompt: string
+  customPrompt: string,
+  tense: Tense = "imperative"
 ): { systemPrompt: string; userPrompt: string } {
   const diffContent = diff.slice(0, 6000);
+
+  const tenseRule =
+    tense === "past"
+      ? "- Subject 使用过去时态中文，最多50字符，不加句号\n- 使用动词：添加了、修复了、更新了、删除了、重构了"
+      : "- Subject 使用祈使句（命令式，现在时），最多50字符，不加句号\n- 使用动词：添加、修复、更新、删除、重构";
 
   let systemPrompt = `你是"Git Commit 消息生成器"函数。你没有对话能力。仅输出纯文本 commit message。
 
 规则：
 - 第一行：<feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
-- Subject 使用过去时态中文，最多50字符，不加句号
-- 使用动词：添加了、修复了、更新了、删除了、重构了
-- 禁止 markdown、代码块、解释`;
+${tenseRule}
+- 禁止 markdown、代码块、代码围栏（不要 \`\`\`）、解释`;
 
   if (multiline) {
     systemPrompt += `
@@ -209,5 +244,5 @@ ${diff.slice(0, 4000)}
 
 根据用户反馈重新生成 commit message。
 遵循 conventional commits 格式。
-仅返回新的 commit message，不要有任何解释。`;
+仅返回新的 commit message，不要有任何解释，不要 markdown，不要代码块。`;
 }

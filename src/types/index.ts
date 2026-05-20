@@ -48,3 +48,5 @@ export type GenerationMethod = "auto" | "cli" | "api";
 export type DiffSource = "staged" | "all" | "auto";
 
 export type CommitStyle = "conventional" | "prefix" | "default" | "custom";
+
+export type CommitTense = "imperative" | "past";

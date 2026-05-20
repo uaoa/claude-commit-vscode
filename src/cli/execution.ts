@@ -10,6 +10,26 @@ import { log, logError, logCommand } from "../utils/logger";
 
 const execAsync = promisify(exec);
 
+/**
+ * Strip markdown code fences (```...```) from Claude's output.
+ * Handles cases where the model wraps the commit message in a fenced block
+ * despite instructions not to.
+ */
+function stripCodeFences(text: string): string {
+  let result = text;
+
+  // Match ```optional-lang\n...\n``` (entire fenced block) and extract content
+  const fullFenceMatch = result.match(/```[^\n]*\n([\s\S]*?)\n```/);
+  if (fullFenceMatch) {
+    result = fullFenceMatch[1];
+  } else {
+    // Remove dangling fence markers anywhere (opening ```lang or closing ```)
+    result = result.replace(/^[ \t]*```[^\n]*$/gmu, "");
+  }
+
+  return result.trim();
+}
+
 export async function generateWithCLI(
   prompt: string,
   progressCallback: ProgressCallback | null = null
@@ -71,7 +91,9 @@ export async function generateWithCLI(
       throw new Error("Empty response from CLI. Check Output panel for details.");
     }
 
-    const lines = stdout
+    const cleanedStdout = stripCodeFences(stdout);
+
+    const lines = cleanedStdout
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
@@ -93,8 +115,30 @@ export async function generateWithCLI(
         }
       }
 
+      // Use the non-trimmed cleaned stdout to preserve blank lines between subject/body/footer.
+      const preserveBlankLines = cleanedStdout.split("\n").map((line) => line.replace(/\s+$/u, ""));
+
+      // Drop leading empty lines
+      while (preserveBlankLines.length > 0 && preserveBlankLines[0].trim().length === 0) {
+        preserveBlankLines.shift();
+      }
+      // Drop trailing empty lines
+      while (preserveBlankLines.length > 0 && preserveBlankLines[preserveBlankLines.length - 1].trim().length === 0) {
+        preserveBlankLines.pop();
+      }
+
       if (startIndex >= 0) {
+        // Find the same starting line in preserveBlankLines
+        const target = lines[startIndex];
+        const startInPreserve = preserveBlankLines.findIndex((l) => l.trim() === target);
+        if (startInPreserve >= 0) {
+          return preserveBlankLines.slice(startInPreserve).join("\n");
+        }
         return lines.slice(startIndex).join("\n");
+      }
+
+      if (preserveBlankLines.length > 0) {
+        return preserveBlankLines.join("\n");
       }
     }
 
@@ -198,7 +242,7 @@ export async function generateWithCLIManaged(
       throw new Error(`CLI error output: ${stderr.trim()}`);
     }
 
-    return stdout.trim() || "chore: update code";
+    return stripCodeFences(stdout) || "chore: update code";
   } catch (error) {
     const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
     if (err.killed) {
@@ -267,7 +311,7 @@ export async function generateWithAPI(
       messages: [{ role: "user", content: prompt }],
     });
 
-    return message.content[0].text.trim();
+    return stripCodeFences(message.content[0].text);
   } catch (error) {
     const err = error as Error & { code?: string; status?: number };
     if (err.code === "MODULE_NOT_FOUND") {
