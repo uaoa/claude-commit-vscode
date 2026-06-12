@@ -15,14 +15,11 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
 
 const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
 
-// Without these the CLI boots every MCP server from the user's global config
-// and injects user CLAUDE.md/rules and hooks, which slows every call and
-// steers output away from the commit message; auth still applies without
-// setting sources. Older CLI versions don't know these flags — see the
-// fallback in runClaudeCliIsolated.
+// Keeps the user's global CLAUDE.md/rules, hooks and MCP servers out of the
+// call — they slow generation and steer output away from the commit message.
 const ISOLATION_ARGS = ["--strict-mcp-config", "--setting-sources", ""];
 
-// null = not probed yet; probed once per extension-host session.
+// null = not probed yet.
 let isolationFlagsSupported: boolean | null = null;
 
 interface CliResult {
