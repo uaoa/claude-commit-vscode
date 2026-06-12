@@ -1,14 +1,148 @@
 import * as vscode from "vscode";
-import { exec } from "child_process";
-import { promisify } from "util";
-import * as fs from "fs";
+import { spawn } from "child_process";
 import * as path from "path";
-import * as os from "os";
 import { findClaudeCliPath } from "./detection";
 import type { ProgressCallback, Model } from "../types";
 import { log, logError, logCommand } from "../utils/logger";
 
-const execAsync = promisify(exec);
+const CLI_TIMEOUT_MS = 120000;
+const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
+
+const CLI_SPEEDUP_ENV: Record<string, string> = {
+  DISABLE_AUTOUPDATER: "1",
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+};
+
+const BASE_CLI_ARGS = [
+  "-p",
+  "--no-session-persistence",
+  "--tools",
+  "",
+  "--effort",
+  "low",
+  // Without this the CLI boots every MCP server from the user's global config.
+  "--strict-mcp-config",
+  // User CLAUDE.md/rules and hooks slow every call and steer output away from
+  // the commit message; auth still applies with no setting sources.
+  "--setting-sources",
+  "",
+];
+
+interface CliResult {
+  stdout: string;
+  stderr: string;
+}
+
+type CliError = Error & { killed?: boolean; code?: string; stderr?: string; stdout?: string };
+
+function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
+  const env = {
+    ...process.env,
+    ...CLI_SPEEDUP_ENV,
+    // nvm/npm-global installs are `#!/usr/bin/env node` shims; node sits next to them.
+    PATH: `${path.dirname(cliPath)}${path.delimiter}${process.env.PATH ?? ""}`,
+  };
+
+  // .cmd/.bat wrappers on Windows only run through a shell.
+  const useShell = process.platform === "win32";
+  const command = useShell && cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { env, shell: useShell, windowsHide: true });
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, CLI_TIMEOUT_MS);
+
+    const fail = (error: CliError): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      error.stderr = error.stderr ?? stderr;
+      error.stdout = error.stdout ?? stdout;
+      reject(error);
+    };
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf-8");
+      if (stdout.length > MAX_OUTPUT_BYTES) {
+        child.kill("SIGKILL");
+        fail(new Error("CLI output exceeded buffer limit"));
+      }
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf-8");
+    });
+
+    child.on("error", (error: CliError) => {
+      fail(error);
+    });
+
+    child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+
+      if (timedOut) {
+        const error: CliError = new Error("CLI process timed out");
+        error.killed = true;
+        error.stderr = stderr;
+        error.stdout = stdout;
+        reject(error);
+        return;
+      }
+
+      if (code !== 0) {
+        const error: CliError = new Error(`CLI exited with code ${code}`);
+        error.stderr = stderr;
+        error.stdout = stdout;
+        reject(error);
+        return;
+      }
+
+      resolve({ stdout, stderr });
+    });
+
+    // Ignore EPIPE when the process dies before reading stdin; close/error report the real failure.
+    child.stdin.on("error", () => {});
+    child.stdin.end(stdin);
+  });
+}
+
+function toCliError(error: unknown, cliPath: string): Error {
+  const err = error as CliError;
+  if (err.killed) {
+    return new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
+  }
+  if (err.code === "ENOENT") {
+    return new Error(`CLI executable not found at: ${cliPath}`);
+  }
+  const stderr = err.stderr?.trim() || "";
+  const stdout = err.stdout?.trim() || "";
+  const details: string[] = [];
+  if (stderr) {
+    details.push(`stderr: ${stderr}`);
+  }
+  if (stdout) {
+    details.push(`stdout: ${stdout}`);
+  }
+  const baseMessage = err.message || String(error);
+  const detailStr = details.length > 0 ? ` [${details.join("; ")}]` : "";
+  const fullError = `CLI execution failed: ${baseMessage}${detailStr}`;
+  logError(fullError, error);
+  return new Error(fullError);
+}
 
 /**
  * Strip markdown code fences (```...```) from Claude's output.
@@ -41,146 +175,106 @@ export async function generateWithCLI(
   }
 
   log(`Found Claude CLI at: ${cliPath}`);
-  const escapedCliPath = cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
 
   const config = vscode.workspace.getConfiguration("claudeCommit");
   const model = config.get<Model>("model", "haiku");
-  const privacyMode = config.get<boolean>("privacyMode", false);
 
-  const tmpDir = os.tmpdir();
-  const promptFile = path.join(tmpDir, `claude-commit-prompt-${Date.now()}.txt`);
+  if (progressCallback) {
+    progressCallback(`Using ${model} model...`);
+  }
 
+  const args = [...BASE_CLI_ARGS, "--model", model];
+  logCommand(`${cliPath} ${args.join(" ")}`);
+
+  let stdout: string;
+  let stderr: string;
   try {
-    await fs.promises.writeFile(promptFile, prompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
-
-    if (progressCallback) {
-      progressCallback(`Using ${model} model...`);
-    }
-
-    const cliFlags = `-p --no-session-persistence --model ${model} --tools "" --effort low`;
-    const baseCommand =
-      process.platform === "win32"
-        ? `type "${promptFile}" | ${escapedCliPath} ${cliFlags}`
-        : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
-
-    // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
-    const command = process.platform === "win32" ? baseCommand : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
-
-    logCommand(command);
-
-    const { stdout, stderr } = await execAsync(command, {
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: 120000,
-    });
-
-    if (stderr) {
-      log(`CLI stderr: ${stderr.trim()}`);
-    }
-    if (stdout) {
-      log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
-    } else {
-      log("CLI stdout is empty");
-    }
-
-    if (stderr && !stdout) {
-      throw new Error(`CLI error output: ${stderr.trim()}`);
-    }
-
-    if (!stdout || stdout.trim().length === 0) {
-      logError("Empty response from CLI", new Error(`Command: ${command}, stderr: ${stderr || "none"}`));
-      throw new Error("Empty response from CLI. Check Output panel for details.");
-    }
-
-    const cleanedStdout = stripCodeFences(stdout);
-
-    const lines = cleanedStdout
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    if (lines.length === 0) {
-      logError("No valid lines in CLI output", new Error(`stdout: ${stdout}`));
-      throw new Error("Empty response from CLI. Check Output panel for details.");
-    }
-
-    const multiLine = config.get<boolean>("multiLineCommit", false);
-    if (multiLine) {
-      const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
-      let startIndex = -1;
-
-      for (let i = 0; i < lines.length; i++) {
-        if (conventionalCommitPattern.test(lines[i])) {
-          startIndex = i;
-          break;
-        }
-      }
-
-      // Use the non-trimmed cleaned stdout to preserve blank lines between subject/body/footer.
-      const preserveBlankLines = cleanedStdout.split("\n").map((line) => line.replace(/\s+$/u, ""));
-
-      // Drop leading empty lines
-      while (preserveBlankLines.length > 0 && preserveBlankLines[0].trim().length === 0) {
-        preserveBlankLines.shift();
-      }
-      // Drop trailing empty lines
-      while (preserveBlankLines.length > 0 && preserveBlankLines[preserveBlankLines.length - 1].trim().length === 0) {
-        preserveBlankLines.pop();
-      }
-
-      if (startIndex >= 0) {
-        // Find the same starting line in preserveBlankLines
-        const target = lines[startIndex];
-        const startInPreserve = preserveBlankLines.findIndex((l) => l.trim() === target);
-        if (startInPreserve >= 0) {
-          return preserveBlankLines.slice(startInPreserve).join("\n");
-        }
-        return lines.slice(startIndex).join("\n");
-      }
-
-      if (preserveBlankLines.length > 0) {
-        return preserveBlankLines.join("\n");
-      }
-    }
-
-    const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
-
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (conventionalCommitPattern.test(lines[i])) {
-        return lines[i];
-      }
-    }
-
-    return lines[lines.length - 1] || "chore: update code";
+    ({ stdout, stderr } = await runClaudeCli(cliPath, args, prompt));
   } catch (error) {
-    const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
-    if (err.killed) {
-      throw new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
+    throw toCliError(error, cliPath);
+  }
+
+  if (stderr) {
+    log(`CLI stderr: ${stderr.trim()}`);
+  }
+  if (stdout) {
+    log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
+  } else {
+    log("CLI stdout is empty");
+  }
+
+  if (stderr && !stdout) {
+    throw new Error(`CLI error output: ${stderr.trim()}`);
+  }
+
+  if (!stdout || stdout.trim().length === 0) {
+    logError(
+      "Empty response from CLI",
+      new Error(`Command: ${cliPath} ${args.join(" ")}, stderr: ${stderr || "none"}`)
+    );
+    throw new Error("Empty response from CLI. Check Output panel for details.");
+  }
+
+  const cleanedStdout = stripCodeFences(stdout);
+
+  const lines = cleanedStdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length === 0) {
+    logError("No valid lines in CLI output", new Error(`stdout: ${stdout}`));
+    throw new Error("Empty response from CLI. Check Output panel for details.");
+  }
+
+  const multiLine = config.get<boolean>("multiLineCommit", false);
+  if (multiLine) {
+    const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
+    let startIndex = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (conventionalCommitPattern.test(lines[i])) {
+        startIndex = i;
+        break;
+      }
     }
-    if (err.code === "ENOENT") {
-      throw new Error(`CLI executable not found at: ${cliPath}`);
+
+    // Use the non-trimmed cleaned stdout to preserve blank lines between subject/body/footer.
+    const preserveBlankLines = cleanedStdout.split("\n").map((line) => line.replace(/\s+$/u, ""));
+
+    // Drop leading empty lines
+    while (preserveBlankLines.length > 0 && preserveBlankLines[0].trim().length === 0) {
+      preserveBlankLines.shift();
     }
-    // Provide detailed error information for debugging
-    const stderr = err.stderr?.trim() || "";
-    const stdout = err.stdout?.trim() || "";
-    const details: string[] = [];
-    if (stderr) {
-      details.push(`stderr: ${stderr}`);
+    // Drop trailing empty lines
+    while (preserveBlankLines.length > 0 && preserveBlankLines[preserveBlankLines.length - 1].trim().length === 0) {
+      preserveBlankLines.pop();
     }
-    if (stdout) {
-      details.push(`stdout: ${stdout}`);
+
+    if (startIndex >= 0) {
+      // Find the same starting line in preserveBlankLines
+      const target = lines[startIndex];
+      const startInPreserve = preserveBlankLines.findIndex((l) => l.trim() === target);
+      if (startInPreserve >= 0) {
+        return preserveBlankLines.slice(startInPreserve).join("\n");
+      }
+      return lines.slice(startIndex).join("\n");
     }
-    const baseMessage = err.message || String(error);
-    const detailStr = details.length > 0 ? ` [${details.join("; ")}]` : "";
-    const fullError = `CLI execution failed: ${baseMessage}${detailStr}`;
-    logError(fullError, error);
-    throw new Error(fullError);
-  } finally {
-    try {
-      await fs.promises.unlink(promptFile);
-    } catch {
-      // Ignore deletion errors
+
+    if (preserveBlankLines.length > 0) {
+      return preserveBlankLines.join("\n");
     }
   }
+
+  const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (conventionalCommitPattern.test(lines[i])) {
+      return lines[i];
+    }
+  }
+
+  return lines[lines.length - 1] || "chore: update code";
 }
 
 export async function generateWithCLIManaged(
@@ -194,86 +288,39 @@ export async function generateWithCLIManaged(
     throw new Error("Claude CLI path not found");
   }
 
-  const escapedCliPath = cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
-
-  const config = vscode.workspace.getConfiguration("claudeCommit");
-  const privacyMode = config.get<boolean>("privacyMode", false);
-
-  const tmpDir = os.tmpdir();
-  const promptFile = path.join(tmpDir, `claude-commit-prompt-${Date.now()}.txt`);
-  const systemPromptFile = path.join(tmpDir, `claude-commit-system-${Date.now()}.txt`);
-
-  try {
-    await fs.promises.writeFile(promptFile, prompt, { encoding: "utf-8", mode: privacyMode ? 0o600 : 0o644 });
-    await fs.promises.writeFile(systemPromptFile, systemPrompt, {
-      encoding: "utf-8",
-      mode: privacyMode ? 0o600 : 0o644,
-    });
-
-    if (progressCallback) {
-      progressCallback("Using haiku model (managed mode)...");
-    }
-
-    const systemPromptEscaped = systemPromptFile.includes(" ") ? `"${systemPromptFile}"` : systemPromptFile;
-    const cliFlags = `-p --no-session-persistence --model haiku --tools "" --effort low --system-prompt "$(cat ${systemPromptEscaped})"`;
-    const baseCommand =
-      process.platform === "win32"
-        ? `type "${promptFile}" | ${escapedCliPath} -p --no-session-persistence --model haiku --tools "" --effort low`
-        : `cat "${promptFile}" | ${escapedCliPath} ${cliFlags}`;
-
-    // Use login shell to load user's environment variables (e.g., from .bashrc, .profile)
-    const command = process.platform === "win32" ? baseCommand : `/bin/bash -l -c ${JSON.stringify(baseCommand)}`;
-
-    logCommand(command);
-
-    const { stdout, stderr } = await execAsync(command, {
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: 120000,
-    });
-
-    if (stderr) {
-      log(`CLI stderr: ${stderr.trim()}`);
-    }
-    if (stdout) {
-      log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
-    }
-
-    if (stderr && !stdout) {
-      throw new Error(`CLI error output: ${stderr.trim()}`);
-    }
-
-    return stripCodeFences(stdout) || "chore: update code";
-  } catch (error) {
-    const err = error as NodeJS.ErrnoException & { killed?: boolean; stderr?: string; stdout?: string };
-    if (err.killed) {
-      throw new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
-    }
-    if (err.code === "ENOENT") {
-      throw new Error(`CLI executable not found at: ${cliPath}`);
-    }
-    // Provide detailed error information for debugging
-    const stderr = err.stderr?.trim() || "";
-    const stdout = err.stdout?.trim() || "";
-    const details: string[] = [];
-    if (stderr) {
-      details.push(`stderr: ${stderr}`);
-    }
-    if (stdout) {
-      details.push(`stdout: ${stdout}`);
-    }
-    const baseMessage = err.message || String(error);
-    const detailStr = details.length > 0 ? ` [${details.join("; ")}]` : "";
-    const fullError = `CLI execution failed: ${baseMessage}${detailStr}`;
-    logError(fullError, error);
-    throw new Error(fullError);
-  } finally {
-    try {
-      await fs.promises.unlink(promptFile);
-      await fs.promises.unlink(systemPromptFile);
-    } catch {
-      // Ignore deletion errors
-    }
+  if (progressCallback) {
+    progressCallback("Using haiku model (managed mode)...");
   }
+
+  const args = [...BASE_CLI_ARGS, "--model", "haiku"];
+  // Windows runs through a shell (.cmd wrapper), where a multi-line system
+  // prompt cannot be quoted safely — skipped there, as before.
+  if (process.platform !== "win32") {
+    args.push("--system-prompt", systemPrompt);
+  }
+
+  logCommand(`${cliPath} ${args.filter((a) => a !== systemPrompt).join(" ")}`);
+
+  let stdout: string;
+  let stderr: string;
+  try {
+    ({ stdout, stderr } = await runClaudeCli(cliPath, args, prompt));
+  } catch (error) {
+    throw toCliError(error, cliPath);
+  }
+
+  if (stderr) {
+    log(`CLI stderr: ${stderr.trim()}`);
+  }
+  if (stdout) {
+    log(`CLI stdout (first 500 chars): ${stdout.substring(0, 500)}`);
+  }
+
+  if (stderr && !stdout) {
+    throw new Error(`CLI error output: ${stderr.trim()}`);
+  }
+
+  return stripCodeFences(stdout) || "chore: update code";
 }
 
 export async function generateWithAPI(
