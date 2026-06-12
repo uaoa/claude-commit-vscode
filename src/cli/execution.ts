@@ -13,20 +13,17 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
 };
 
-const BASE_CLI_ARGS = [
-  "-p",
-  "--no-session-persistence",
-  "--tools",
-  "",
-  "--effort",
-  "low",
-  // Without this the CLI boots every MCP server from the user's global config.
-  "--strict-mcp-config",
-  // User CLAUDE.md/rules and hooks slow every call and steer output away from
-  // the commit message; auth still applies with no setting sources.
-  "--setting-sources",
-  "",
-];
+const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
+
+// Without these the CLI boots every MCP server from the user's global config
+// and injects user CLAUDE.md/rules and hooks, which slows every call and
+// steers output away from the commit message; auth still applies without
+// setting sources. Older CLI versions don't know these flags — see the
+// fallback in runClaudeCliIsolated.
+const ISOLATION_ARGS = ["--strict-mcp-config", "--setting-sources", ""];
+
+// null = not probed yet; probed once per extension-host session.
+let isolationFlagsSupported: boolean | null = null;
 
 interface CliResult {
   stdout: string;
@@ -34,6 +31,30 @@ interface CliResult {
 }
 
 type CliError = Error & { killed?: boolean; code?: string; stderr?: string; stdout?: string };
+
+function isUnknownOptionError(error: unknown): boolean {
+  const err = error as CliError;
+  return `${err.message ?? ""}\n${err.stderr ?? ""}`.toLowerCase().includes("unknown option");
+}
+
+async function runClaudeCliIsolated(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
+  if (isolationFlagsSupported === false) {
+    return runClaudeCli(cliPath, args, stdin);
+  }
+
+  try {
+    const result = await runClaudeCli(cliPath, [...ISOLATION_ARGS, ...args], stdin);
+    isolationFlagsSupported = true;
+    return result;
+  } catch (error) {
+    if (isolationFlagsSupported === null && isUnknownOptionError(error)) {
+      isolationFlagsSupported = false;
+      log("CLI does not support isolation flags (older version), retrying without them");
+      return runClaudeCli(cliPath, args, stdin);
+    }
+    throw error;
+  }
+}
 
 function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
   const env = {
@@ -189,7 +210,7 @@ export async function generateWithCLI(
   let stdout: string;
   let stderr: string;
   try {
-    ({ stdout, stderr } = await runClaudeCli(cliPath, args, prompt));
+    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt));
   } catch (error) {
     throw toCliError(error, cliPath);
   }
@@ -304,7 +325,7 @@ export async function generateWithCLIManaged(
   let stdout: string;
   let stderr: string;
   try {
-    ({ stdout, stderr } = await runClaudeCli(cliPath, args, prompt));
+    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt));
   } catch (error) {
     throw toCliError(error, cliPath);
   }
