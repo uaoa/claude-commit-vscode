@@ -28,7 +28,7 @@ export interface ClaudeCommitConfig {
   apiKey: string;
   preferredMethod: "auto" | "cli" | "api";
   model: "haiku" | "sonnet" | "opus";
-  language: "en" | "ua" | "zh";
+  language: "en" | "ko" | "ua" | "zh";
   multiLineCommit: boolean;
   diffSource: "staged" | "all" | "auto";
   claudeCodeManaged: boolean;
@@ -39,7 +39,7 @@ export interface ClaudeCommitConfig {
 
 export type ProgressCallback = (message: string) => void;
 
-export type Language = "en" | "ua" | "zh";
+export type Language = "en" | "ko" | "ua" | "zh";
 
 export type Model = "haiku" | "sonnet" | "opus";
 

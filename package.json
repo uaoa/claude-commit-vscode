@@ -93,12 +93,14 @@
 					"type": "string",
 					"enum": [
 						"en",
+						"ko",
 						"ua",
 						"zh"
 					],
 					"default": "en",
 					"enumDescriptions": [
 						"English",
+						"Korean",
 						"Ukrainian",
 						"Chinese"
 					],

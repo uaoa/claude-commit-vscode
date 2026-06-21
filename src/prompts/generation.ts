@@ -1,9 +1,10 @@
 import type { Language } from "../types";
 import * as en from "./en";
+import * as ko from "./ko";
 import * as ua from "./ua";
 import * as zh from "./zh";
 
-const promptModules = { en, ua, zh };
+const promptModules = { en, ko, ua, zh };
 
 export function createGenerationPrompt(
   diff: string,
