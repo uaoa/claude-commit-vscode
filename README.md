@@ -27,7 +27,7 @@ You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×
 - **Edit with feedback**: Not satisfied? Click "Edit with feedback" to refine the message with AI assistance
 - **Multi-line commit support**: Generate detailed commits with body and footer for complex changes
 - **Model selection**: Choose between Haiku (fast), Sonnet (balanced), or Opus (most capable)
-- **Multilingual support**: Works in English, Ukrainian, and Chinese
+- **Multilingual support**: Works in English, Korean, Ukrainian, and Chinese
 - **Flexible backend**: Automatically uses Claude CLI, with API fallback option
 - **Smart runtime detection**: Finds Claude CLI from your PATH at runtime without modifying settings (perfect for WSL)
 - **Custom BASE_URI support**: Works with custom Claude API endpoints via environment variables
@@ -91,7 +91,7 @@ This extension keeps it simple with optional settings:
 * `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
-* `claudeCommit.language`: Commit message language (`en` for English, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
+* `claudeCommit.language`: Commit message language (`en` for English, `ko` for Korean, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
 * `claudeCommit.multiLineCommit`: Generate detailed multi-line commits with body and footer – defaults to `false`
 * `claudeCommit.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
 * `claudeCommit.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
@@ -124,6 +124,13 @@ The extension will automatically search for Claude CLI in common locations.
 {
     "claudeCommit.preferredMethod": "auto",
     "claudeCommit.apiKey": "your-api-key-here"
+}
+```
+
+### Korean interface
+```json
+{
+    "claudeCommit.language": "ko"
 }
 ```
 
