@@ -15,9 +15,12 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
 
 const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
 
-// Keeps the user's global CLAUDE.md/rules, hooks and MCP servers out of the
-// call — they slow generation and steer output away from the commit message.
-const ISOLATION_ARGS = ["--strict-mcp-config", "--setting-sources", ""];
+// Keeps MCP servers out of the call — they slow generation and steer output
+// away from the commit message. Does NOT use --setting-sources "": that also
+// blocks the `user` source, which is where the CLI reads its login/auth
+// state, breaking generation with "Not logged in" even for authenticated
+// users (https://github.com/uaoa/claude-commit-vscode/issues/20).
+const ISOLATION_ARGS = ["--strict-mcp-config"];
 
 // null = not probed yet.
 let isolationFlagsSupported: boolean | null = null;
