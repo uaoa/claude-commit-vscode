@@ -11,6 +11,26 @@ const execAsync = promisify(exec);
 // Cache for found CLI path
 let cachedCliPath: string | null = null;
 
+// Detection sources, in the order they can be configured by the user
+export type DetectionSource = "path" | "vscodeExtension" | "shellProfile" | "commonPaths";
+
+const DEFAULT_DETECTION_ORDER: DetectionSource[] = ["path", "vscodeExtension", "shellProfile", "commonPaths"];
+
+const CLAUDE_EXTENSION_ID = "anthropic.claude-code";
+
+function getDetectionOrder(config: vscode.WorkspaceConfiguration): DetectionSource[] {
+  const configured = config.get<string[]>("detectionOrder");
+  if (!Array.isArray(configured) || configured.length === 0) {
+    return DEFAULT_DETECTION_ORDER;
+  }
+
+  const order = configured.filter((s): s is DetectionSource => DEFAULT_DETECTION_ORDER.includes(s as DetectionSource));
+
+  // Keep unlisted sources as a fallback tail so a partial list never disables detection
+  const missing = DEFAULT_DETECTION_ORDER.filter((s) => !order.includes(s));
+  return [...order, ...missing];
+}
+
 function getCommonCliPaths(): string[] {
   const home = os.homedir();
   const paths: string[] = [];
@@ -92,6 +112,160 @@ async function findCliWithGlob(pattern: string): Promise<string | null> {
   return null;
 }
 
+function getExtensionsDirs(): string[] {
+  const home = os.homedir();
+  // Remote (`.vscode-server`) and local (`.vscode`) install roots, plus insiders
+  // and popular forks. Non-existent dirs are skipped silently.
+  return [
+    ".vscode-server",
+    ".vscode-server-insiders",
+    ".vscode",
+    ".vscode-insiders",
+    ".cursor-server",
+    ".cursor",
+    ".windsurf-server",
+    ".windsurf",
+  ].map((dir) => path.join(home, dir, "extensions"));
+}
+
+function compareExtensionVersions(a: string, b: string): number {
+  // Sort newest first: anthropic.claude-code-2.1.216-linux-x64
+  const parse = (name: string) =>
+    (name.slice(CLAUDE_EXTENSION_ID.length + 1).match(/^\d+(\.\d+)*/)?.[0] ?? "0").split(".").map(Number);
+
+  const va = parse(a);
+  const vb = parse(b);
+  for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+    const diff = (vb[i] ?? 0) - (va[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return b.localeCompare(a);
+}
+
+async function findCliInExtensionDir(extensionPath: string): Promise<string | null> {
+  const binaryName = process.platform === "win32" ? "claude.exe" : "claude";
+  const nativeBinaryDir = path.join(extensionPath, "resources", "native-binary");
+
+  // Layout used by the official extension: resources/native-binary/claude
+  const direct = path.join(nativeBinaryDir, binaryName);
+  if (await fileExists(direct)) return direct;
+
+  // Tolerate a per-platform subdirectory: resources/native-binary/<platform>/claude
+  try {
+    const entries = await fs.promises.readdir(nativeBinaryDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const nested = path.join(nativeBinaryDir, entry.name, binaryName);
+      if (await fileExists(nested)) return nested;
+    }
+  } catch {
+    // native-binary dir doesn't exist
+  }
+
+  return null;
+}
+
+/**
+ * Look for the CLI bundled with the official Claude Code VS Code extension.
+ * Works both locally and over Remote-SSH/WSL/devcontainers: the extension API
+ * is tried first (it knows where the current extension host installed it),
+ * with a scan of the well-known extension directories as fallback.
+ */
+async function findCliInVscodeExtensions(): Promise<string | null> {
+  const installed = vscode.extensions.all.find((ext) => ext.id.toLowerCase() === CLAUDE_EXTENSION_ID);
+
+  if (installed) {
+    const found = await findCliInExtensionDir(installed.extensionUri.fsPath);
+    if (found) {
+      log(`Found CLI in installed VS Code extension: ${found}`);
+      return found;
+    }
+  }
+
+  for (const dir of getExtensionsDirs()) {
+    let entries: string[];
+    try {
+      entries = await fs.promises.readdir(dir);
+    } catch {
+      continue;
+    }
+
+    const candidates = entries
+      .filter((name) => name.toLowerCase().startsWith(`${CLAUDE_EXTENSION_ID}-`))
+      .sort(compareExtensionVersions);
+
+    for (const candidate of candidates) {
+      const found = await findCliInExtensionDir(path.join(dir, candidate));
+      if (found) {
+        log(`Found CLI in VS Code extensions dir: ${found}`);
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function findCliOnPath(): Promise<string | null> {
+  try {
+    const cmd = process.platform === "win32" ? "where claude" : "which claude";
+    log(`Trying command: ${cmd}`);
+    const { stdout } = await execAsync(cmd, {
+      env: { ...process.env },
+      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+    });
+    const foundPath = stdout.trim().split("\n")[0];
+    if (foundPath && (await fileExists(foundPath))) {
+      log(`Found CLI via ${cmd}: ${foundPath}`);
+      return foundPath;
+    }
+  } catch (err) {
+    log(`which/where command failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return null;
+}
+
+async function findCliViaShellProfile(): Promise<string | null> {
+  if (process.platform === "win32") return null;
+
+  try {
+    log("Trying shell profile sourcing...");
+    const { stdout } = await execAsync(
+      "source ~/.zshrc 2>/dev/null || source ~/.bashrc 2>/dev/null || true; which claude",
+      {
+        shell: "/bin/bash",
+      }
+    );
+    const foundPath = stdout.trim();
+    if (foundPath && (await fileExists(foundPath))) {
+      log(`Found CLI via shell profile: ${foundPath}`);
+      return foundPath;
+    }
+  } catch (err) {
+    log(`Shell profile sourcing failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return null;
+}
+
+async function findCliInCommonPaths(): Promise<string | null> {
+  log("Checking common installation paths...");
+  for (const p of getCommonCliPaths()) {
+    const found = await findCliWithGlob(p);
+    if (found) {
+      log(`Found CLI at common path: ${found}`);
+      return found;
+    }
+  }
+  return null;
+}
+
+const DETECTORS: Record<DetectionSource, () => Promise<string | null>> = {
+  path: findCliOnPath,
+  vscodeExtension: findCliInVscodeExtensions,
+  shellProfile: findCliViaShellProfile,
+  commonPaths: findCliInCommonPaths,
+};
+
 export async function findClaudeCliPath(): Promise<string | null> {
   // 1. Check user settings
   const config = vscode.workspace.getConfiguration("claudeCommit");
@@ -112,54 +286,13 @@ export async function findClaudeCliPath(): Promise<string | null> {
     return cachedCliPath;
   }
 
-  log("Searching for Claude CLI...");
+  // 3. Run the detection sources in the user-configured order
+  const order = getDetectionOrder(config);
+  log(`Searching for Claude CLI (order: ${order.join(" > ")})...`);
 
-  // 3. Try which/where
-  try {
-    const cmd = process.platform === "win32" ? "where claude" : "which claude";
-    log(`Trying command: ${cmd}`);
-    const { stdout } = await execAsync(cmd, {
-      env: { ...process.env },
-      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
-    });
-    const foundPath = stdout.trim().split("\n")[0];
-    if (foundPath && (await fileExists(foundPath))) {
-      log(`Found CLI via ${cmd}: ${foundPath}`);
-      cachedCliPath = foundPath;
-      return foundPath;
-    }
-  } catch (err) {
-    log(`which/where command failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  // 4. Try shell profile
-  if (process.platform !== "win32") {
-    try {
-      log("Trying shell profile sourcing...");
-      const { stdout } = await execAsync(
-        "source ~/.zshrc 2>/dev/null || source ~/.bashrc 2>/dev/null || true; which claude",
-        {
-          shell: "/bin/bash",
-        }
-      );
-      const foundPath = stdout.trim();
-      if (foundPath && (await fileExists(foundPath))) {
-        log(`Found CLI via shell profile: ${foundPath}`);
-        cachedCliPath = foundPath;
-        return foundPath;
-      }
-    } catch (err) {
-      log(`Shell profile sourcing failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  // 5. Check common paths
-  log("Checking common installation paths...");
-  const commonPaths = getCommonCliPaths();
-  for (const p of commonPaths) {
-    const found = await findCliWithGlob(p);
+  for (const source of order) {
+    const found = await DETECTORS[source]();
     if (found) {
-      log(`Found CLI at common path: ${found}`);
       cachedCliPath = found;
       return found;
     }
@@ -167,6 +300,11 @@ export async function findClaudeCliPath(): Promise<string | null> {
 
   log("Claude CLI not found in any location");
   return null;
+}
+
+// Exposed so callers can force a re-detection after settings change
+export function clearCliPathCache(): void {
+  cachedCliPath = null;
 }
 
 export async function hasClaudeCodeCLI(): Promise<boolean> {

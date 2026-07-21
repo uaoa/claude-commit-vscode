@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { generateCommitMessage, editCommitMessage } from "./generators/commit";
 import type { GitRepository, GitAPI, Language } from "./types";
 import { log, logError, showOutputChannel, disposeOutputChannel } from "./utils/logger";
+import { clearCliPathCache } from "./cli/detection";
 
 /**
  * Show an information message that auto-closes after a specified timeout.
@@ -244,7 +245,18 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   );
 
-  context.subscriptions.push(generateCommit, generateCommitWithCustomPrompt);
+  // Re-run detection when the user changes how the CLI should be located
+  const configWatcher = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (
+      event.affectsConfiguration("claudeCommit.detectionOrder") ||
+      event.affectsConfiguration("claudeCommit.cliPath")
+    ) {
+      log("CLI detection settings changed, clearing cached CLI path");
+      clearCliPathCache();
+    }
+  });
+
+  context.subscriptions.push(generateCommit, generateCommitWithCustomPrompt, configWatcher);
 }
 
 async function handleCustomPrompt(repo: GitRepository): Promise<void> {
