@@ -88,6 +88,7 @@ The extension supports custom Claude API endpoints through environment variables
 This extension keeps it simple with optional settings:
 
 * `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
+* `claudeCommit.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
 * `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
@@ -109,7 +110,29 @@ This extension keeps it simple with optional settings:
     "claudeCommit.preferredMethod": "auto"
 }
 ```
-The extension will automatically search for Claude CLI in common locations.
+The extension will automatically search for Claude CLI in common locations, including the binary bundled with the official **Claude Code VS Code extension** (`anthropic.claude-code`), e.g. `~/.vscode-server/extensions/anthropic.claude-code-<version>/resources/native-binary/claude`. This works both locally and in remote sessions (Remote-SSH, WSL, dev containers).
+
+### Custom detection order
+```json
+{
+    "claudeCommit.detectionOrder": [
+        "vscodeExtension",
+        "path",
+        "commonPaths",
+        "shellProfile"
+    ]
+}
+```
+Sources are tried top to bottom and the first hit wins:
+
+| Source | Where it looks |
+|---|---|
+| `path` | `which claude` / `where claude` |
+| `vscodeExtension` | binary shipped with the Claude Code VS Code extension (local and remote install dirs) |
+| `shellProfile` | PATH after sourcing `~/.zshrc` / `~/.bashrc` (macOS/Linux) |
+| `commonPaths` | npm global, `~/.local/bin`, Homebrew, nvm, … |
+
+Sources you omit are still tried last as a fallback, so detection never breaks. Setting `claudeCommit.cliPath` bypasses detection entirely.
 
 ### Manual CLI path (for NVM users or custom installations)
 ```json

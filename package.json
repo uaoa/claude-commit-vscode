@@ -56,11 +56,38 @@
 					"description": "Path to Claude Code CLI executable (leave empty for auto-detection)",
 					"order": 1
 				},
+				"claudeCommit.detectionOrder": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": [
+							"path",
+							"vscodeExtension",
+							"shellProfile",
+							"commonPaths"
+						],
+						"enumDescriptions": [
+							"Executable found on PATH (which/where claude)",
+							"Binary bundled with the official Claude Code VS Code extension (works locally and in Remote-SSH/WSL/devcontainers)",
+							"PATH after sourcing ~/.zshrc / ~/.bashrc (macOS/Linux only)",
+							"Common installation paths (npm global, ~/.local/bin, Homebrew, nvm, ...)"
+						]
+					},
+					"uniqueItems": true,
+					"default": [
+						"path",
+						"vscodeExtension",
+						"shellProfile",
+						"commonPaths"
+					],
+					"markdownDescription": "Order in which auto-detection looks for the Claude CLI. Sources are tried top to bottom and the first hit wins. Omitted sources are still tried last as a fallback. Ignored when `claudeCommit.cliPath` is set.",
+					"order": 2
+				},
 				"claudeCommit.apiKey": {
 					"type": "string",
 					"default": "",
 					"description": "Anthropic API key for Claude AI (optional if using Claude Code CLI)",
-					"order": 2
+					"order": 3
 				},
 				"claudeCommit.preferredMethod": {
 					"type": "string",
@@ -71,7 +98,7 @@
 					],
 					"default": "auto",
 					"description": "Preferred method for generating commits: auto (try CLI first, then API), cli (Claude Code CLI only), or api (Anthropic API only)",
-					"order": 3
+					"order": 4
 				},
 				"claudeCommit.model": {
 					"type": "string",
@@ -87,7 +114,7 @@
 						"Claude Opus - Most capable"
 					],
 					"description": "Claude model to use for commit generation",
-					"order": 4
+					"order": 5
 				},
 				"claudeCommit.language": {
 					"type": "string",
@@ -105,13 +132,13 @@
 						"Chinese"
 					],
 					"description": "Language for commit messages",
-					"order": 5
+					"order": 6
 				},
 				"claudeCommit.multiLineCommit": {
 					"type": "boolean",
 					"default": false,
 					"description": "Generate detailed multi-line commits with body and footer (conventional commits extended format)",
-					"order": 6
+					"order": 7
 				},
 				"claudeCommit.diffSource": {
 					"type": "string",
@@ -127,19 +154,19 @@
 						"Use staged changes if available, otherwise use all changes"
 					],
 					"description": "Which changes to use for generating commit messages",
-					"order": 7
+					"order": 8
 				},
 				"claudeCommit.claudeCodeManaged": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "Claude Code managed mode: Let Claude Code's haiku model generate commit messages with minimal intervention (only language hint provided). **Only works when preferredMethod is 'cli'**",
-					"order": 8
+					"order": 9
 				},
 				"claudeCommit.keepCoAuthoredBy": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "Keep Co-Authored-By signature in commit message. **Only works in Claude Code managed mode**",
-					"order": 9
+					"order": 10
 				},
 				"claudeCommit.messageAutoCloseSeconds": {
 					"type": "number",
@@ -147,13 +174,13 @@
 					"minimum": 0,
 					"maximum": 60,
 					"description": "Auto-close timeout for the success message in seconds. Set to 0 to disable auto-close.",
-					"order": 10
+					"order": 11
 				},
 				"claudeCommit.privacyMode": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "Privacy mode: Restrict temporary prompt file permissions to owner-only (0600). When disabled, uses default permissions (0644). **Note: This option only takes effect on Linux/macOS. On Windows, file permissions are managed by the OS and this setting is ignored.**",
-					"order": 11
+					"order": 12
 				},
 				"claudeCommit.commitStyle": {
 					"type": "string",
@@ -171,14 +198,14 @@
 						"Custom template using {diff} and {stats} variables"
 					],
 					"markdownDescription": "Commit message style format. Choose 'custom' to use your own prompt template.",
-					"order": 12
+					"order": 13
 				},
 				"claudeCommit.customPromptTemplate": {
 					"type": "string",
 					"default": "",
 					"markdownDescription": "Custom prompt template. Use `{diff}` for diff content and `{stats}` for change statistics. Only used when commitStyle is set to 'custom'. Example: `Generate a commit message for:\n\n{stats}\n\n{diff}`",
 					"editPresentation": "multilineText",
-					"order": 13
+					"order": 14
 				},
 				"claudeCommit.commitTense": {
 					"type": "string",
@@ -192,7 +219,7 @@
 						"Past tense - 'added feature', 'fixed bug'"
 					],
 					"markdownDescription": "Tense/mood for commit subjects. **Imperative** (default) follows the official Git convention - the subject reads as a command (e.g. 'add login button'). **Past tense** describes what was done (e.g. 'added login button').",
-					"order": 14
+					"order": 15
 				}
 			}
 		}
