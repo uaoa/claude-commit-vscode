@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
+import type Anthropic from "@anthropic-ai/sdk";
 import { findClaudeCliPath } from "./detection";
 import type { ProgressCallback, Model } from "../types";
 import { log, logError, logCommand } from "../utils/logger";
@@ -19,6 +20,24 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
 
 // Matches the first line of a Conventional Commits message, incl. `type!:` breaking marker
 const CONVENTIONAL_COMMIT_PATTERN = /^(feat|fix|docs|style|refactor|test|build|ci|chore|perf|revert)(\(.+?\))?!?:.+/;
+
+// API model IDs for the `claudeCommit.model` presets
+const API_MODELS: Record<Model, string> = {
+  haiku: "claude-haiku-4-5",
+  sonnet: "claude-sonnet-5",
+  opus: "claude-opus-5",
+};
+
+/**
+ * `claudeCommit.customModel` (an exact model ID or CLI alias) wins over the
+ * `claudeCommit.model` preset.
+ */
+function getModelSetting(config: vscode.WorkspaceConfiguration): { preset: Model; custom: string } {
+  return {
+    preset: config.get<Model>("model", "haiku"),
+    custom: config.get<string>("customModel", "").trim(),
+  };
+}
 
 const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
 
@@ -234,7 +253,8 @@ export async function generateWithCLI(
   log(`Found Claude CLI at: ${cliPath}`);
 
   const config = vscode.workspace.getConfiguration("claudeCommit");
-  const model = config.get<Model>("model", "haiku");
+  const { preset, custom } = getModelSetting(config);
+  const model = custom || preset;
 
   if (progressCallback) {
     progressCallback(`Using ${model} model...`);
@@ -388,42 +408,59 @@ export async function generateWithAPI(
     throw new Error("ANTHROPIC_API_KEY not found. Set it in extension settings or environment variable.");
   }
 
-  const modelSetting = config.get<Model>("model", "haiku");
-  const modelMap: Record<Model, string> = {
-    haiku: "claude-haiku-4-5-20251001",
-    sonnet: "claude-sonnet-4-6",
-    opus: "claude-opus-4-6",
-  };
-  const apiModel = modelMap[modelSetting] ?? modelMap.haiku;
+  const { preset, custom } = getModelSetting(config);
+  const apiModel = custom || (API_MODELS[preset] ?? API_MODELS.haiku);
 
   if (progressCallback) {
-    progressCallback(`Connecting to Anthropic API (${modelSetting})...`);
+    progressCallback(`Connecting to Anthropic API (${apiModel})...`);
   }
 
+  // Bundled by webpack; required lazily so activation does not pay for loading the SDK.
+  const sdk: typeof import("@anthropic-ai/sdk") = require("@anthropic-ai/sdk");
+  const anthropic = new sdk.Anthropic({ apiKey });
+
+  const params: Record<string, unknown> = {
+    model: apiModel,
+    // Headroom for adaptive thinking on Sonnet 5 / Opus 5 (on by default there)
+    max_tokens: 4096,
+    messages: [{ role: "user", content: prompt }],
+  };
+  // Effort is supported by the Sonnet/Opus presets but rejected by Haiku 4.5;
+  // custom model IDs are sent as-is.
+  if (!custom && preset !== "haiku") {
+    params.output_config = { effort: "low" };
+  }
+
+  let message: Anthropic.Message;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Anthropic = require("@anthropic-ai/sdk");
-    const anthropic = new Anthropic({ apiKey });
-
-    const message = await anthropic.messages.create({
-      model: apiModel,
-      max_tokens: 1000,
-      temperature: 0.3,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    return stripCodeFences(message.content[0].text);
+    message = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
   } catch (error) {
-    const err = error as Error & { code?: string; status?: number };
-    if (err.code === "MODULE_NOT_FOUND") {
-      throw new Error("Install @anthropic-ai/sdk to use API: npm install @anthropic-ai/sdk");
-    }
-    if (err.status === 401) {
+    if (error instanceof sdk.AuthenticationError) {
       throw new Error("Invalid API key. Check your ANTHROPIC_API_KEY in settings.");
     }
-    if (err.status === 429) {
+    if (error instanceof sdk.RateLimitError) {
       throw new Error("Rate limit exceeded. Please wait and try again.");
+    }
+    if (error instanceof sdk.NotFoundError) {
+      throw new Error(`Model not found: ${apiModel}. Check claudeCommit.model / claudeCommit.customModel.`);
     }
     throw error;
   }
+
+  if (message.stop_reason === "refusal") {
+    throw new Error("Claude declined to generate a commit message for this diff.");
+  }
+
+  // With thinking enabled the first block is not text, so collect every text block.
+  const text = message.content
+    .map((block) => (block.type === "text" ? block.text : ""))
+    .join("")
+    .trim();
+
+  if (!text) {
+    logError("Empty response from API", new Error(`stop_reason: ${message.stop_reason}`));
+    throw new Error("Empty response from API. Check Output panel for details.");
+  }
+
+  return stripCodeFences(text);
 }

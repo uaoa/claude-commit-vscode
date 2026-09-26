@@ -92,13 +92,14 @@ This extension keeps it simple with optional settings:
 * `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
+* `claudeCommit.customModel`: Exact model ID or CLI alias that overrides `claudeCommit.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
 * `claudeCommit.language`: Commit message language (`en` for English, `ko` for Korean, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
 * `claudeCommit.multiLineCommit`: Generate detailed multi-line commits with body and footer – defaults to `false`
 * `claudeCommit.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
 * `claudeCommit.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
 * `claudeCommit.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
 * `claudeCommit.messageAutoCloseSeconds`: Auto-close timeout for success message in seconds (0 to disable) – defaults to `5`
-* `claudeCommit.privacyMode`: Restrict temporary prompt file permissions to owner-only on Linux/macOS – defaults to `false`
+* `claudeCommit.privacyMode`: *Deprecated, no effect* – since 1.0.20 the prompt is passed via stdin and never written to disk
 * `claudeCommit.commitStyle`: Commit message style format (`conventional`, `prefix`, `default`, or `custom`) – defaults to `conventional`
 * `claudeCommit.customPromptTemplate`: Custom prompt template with `{diff}` and `{stats}` variables (only used when commitStyle is `custom`) – defaults to empty
 
@@ -185,7 +186,14 @@ This generates commits with subject, body, and footer following the full convent
     "claudeCommit.model": "sonnet"
 }
 ```
-Available models: `haiku` (fast, default), `sonnet` (balanced), `opus` (most capable).
+Available models: `haiku` (fast, default), `sonnet` (balanced), `opus` (most capable). With the CLI these are aliases for the latest model of each family; with the API they map to `claude-haiku-4-5`, `claude-sonnet-5` and `claude-opus-5`.
+
+To pin an exact model, set `customModel` — it takes precedence over `model`:
+```json
+{
+    "claudeCommit.customModel": "claude-opus-5-5"
+}
+```
 
 ### Control diff source
 ```json
@@ -223,12 +231,7 @@ Keeps the Co-Authored-By signature in commit messages. Only works in Claude Code
 Set to `0` to disable auto-close and keep the success message visible until manually dismissed.
 
 ### Privacy mode for temporary files
-```json
-{
-    "claudeCommit.privacyMode": true
-}
-```
-Restricts temporary prompt file permissions to owner-only (0600) on Linux/macOS. Windows ignores this setting.
+`claudeCommit.privacyMode` is deprecated and has no effect: since 1.0.20 the prompt is passed to the CLI via stdin and never touches disk.
 
 ### Commit message styles
 
@@ -320,7 +323,7 @@ The extension uses intelligent auto-detection to find Claude CLI **at runtime** 
    - **WSL users**: Keep `claudeCommit.cliPath` empty to allow runtime detection in both Windows and WSL
    - **NVM users**: Auto-detection supports NVM paths via shell profile sourcing
    - **macOS**: The extension loads shell profiles to find paths
-   - **Windows**: Checks common npm installation directories
+   - **Windows**: Checks the native installer (`~/.local/bin/claude.exe`) and common npm installation directories
 
 ### No commit message generated
 
@@ -365,7 +368,6 @@ This error means Claude CLI was found but didn't return any output. **Check the 
 4. **Common causes**:
    - **Not authenticated**: Run `claude` in terminal to authenticate
    - **Network issues**: Check your internet connection
-   - **Permissions**: Try setting `claudeCommit.privacyMode: false`
    - **Corrupted install**: Reinstall Claude CLI (`npm install -g @anthropic-ai/claude-code`)
    - **Custom API endpoint**: Ensure environment variables for BASE_URI are properly set in your shell profile
 

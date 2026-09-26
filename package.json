@@ -109,12 +109,18 @@
 					],
 					"default": "haiku",
 					"enumDescriptions": [
-						"Claude Haiku - Fast and cost-effective",
-						"Claude Sonnet - Balanced performance",
-						"Claude Opus - Most capable"
+						"Claude Haiku 4.5 - Fast and cost-effective",
+						"Claude Sonnet (CLI: latest Sonnet; API: claude-sonnet-5) - Balanced performance",
+						"Claude Opus (CLI: latest Opus; API: claude-opus-5) - Most capable"
 					],
 					"description": "Claude model to use for commit generation",
 					"order": 5
+				},
+				"claudeCommit.customModel": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Exact model ID or Claude CLI alias that overrides `claudeCommit.model`, e.g. `claude-opus-5-5`, `claude-sonnet-5`, `sonnet[1m]`. Leave empty to use `claudeCommit.model`. Not used in Claude Code managed mode.",
+					"order": 5.5
 				},
 				"claudeCommit.language": {
 					"type": "string",
@@ -180,7 +186,8 @@
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "Privacy mode: Restrict temporary prompt file permissions to owner-only (0600). When disabled, uses default permissions (0644). **Note: This option only takes effect on Linux/macOS. On Windows, file permissions are managed by the OS and this setting is ignored.**",
-					"order": 12
+					"order": 12,
+					"markdownDeprecationMessage": "No longer used: since 1.0.20 the prompt is passed to the CLI via stdin and never written to disk."
 				},
 				"claudeCommit.commitStyle": {
 					"type": "string",
