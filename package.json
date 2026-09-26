@@ -36,6 +36,11 @@
 				"command": "claude-commit.generateWithCustomPrompt",
 				"title": "Generate Commit Message with Custom Prompt",
 				"category": "Claude Commit"
+			},
+			{
+				"command": "claude-commit.setApiKey",
+				"title": "Set Anthropic API Key",
+				"category": "Claude Commit"
 			}
 		],
 		"menus": {
@@ -86,8 +91,8 @@
 				"claudeCommit.apiKey": {
 					"type": "string",
 					"default": "",
-					"description": "Anthropic API key for Claude AI (optional if using Claude Code CLI)",
-					"order": 3
+					"order": 3,
+					"markdownDescription": "Anthropic API key (optional if using Claude Code CLI). **Prefer the command `Claude Commit: Set Anthropic API Key`**, which keeps the key in the OS secret storage instead of plain-text settings.json. A key stored there takes precedence over this setting."
 				},
 				"claudeCommit.preferredMethod": {
 					"type": "string",

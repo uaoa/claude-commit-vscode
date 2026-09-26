@@ -4,13 +4,24 @@ import { getDiff } from "../utils/git";
 import { createGenerationPrompt, createEditPrompt, createManagedPrompt } from "../prompts/generation";
 import { hasClaudeCodeCLI, promptForCliPath } from "../cli/detection";
 import { generateWithCLI, generateWithCLIManaged, generateWithAPI } from "../cli/execution";
+import { getApiKey } from "../utils/apiKey";
+import { isCancellation } from "../utils/cancel";
 import { log } from "../utils/logger";
+
+// Adds context to a failure but lets a user cancellation through untouched
+function withPrefix(prefix: string, error: unknown): Error {
+  if (isCancellation(error)) {
+    return error as Error;
+  }
+  return new Error(`${prefix}: ${(error as Error).message}`);
+}
 
 export async function generateCommitMessage(
   repo: GitRepository,
   language: Language = "en",
   progressCallback: ProgressCallback | null = null,
-  customPrompt: string = ""
+  customPrompt: string = "",
+  signal?: AbortSignal
 ): Promise<string> {
   const repoPath = repo.rootUri.fsPath;
   const config = vscode.workspace.getConfiguration("claudeCommit");
@@ -49,7 +60,7 @@ export async function generateCommitMessage(
       customPrompt,
       commitTense
     );
-    return await generateWithCLIManaged(userPrompt, systemPrompt, progressCallback);
+    return await generateWithCLIManaged(userPrompt, systemPrompt, progressCallback, signal);
   }
 
   if (progressCallback) {
@@ -84,16 +95,15 @@ export async function generateCommitMessage(
         if (progressCallback) {
           progressCallback("Generating with Claude CLI...");
         }
-        commitMessage = await generateWithCLI(prompt, progressCallback);
+        commitMessage = await generateWithCLI(prompt, progressCallback, signal);
         return commitMessage;
       } catch (error) {
-        const err = error as Error;
         // Without an API key there is nothing to fall back to — surface the real
         // CLI failure instead of a misleading "ANTHROPIC_API_KEY not found".
-        if (preferredMethod === "cli" || !(config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY)) {
-          throw new Error(`Claude CLI error: ${err.message}`);
+        if (preferredMethod === "cli" || isCancellation(error) || !(await getApiKey())) {
+          throw withPrefix("Claude CLI error", error);
         }
-        log(`CLI failed, falling back to API: ${err.message}`);
+        log(`CLI failed, falling back to API: ${(error as Error).message}`);
       }
     } else {
       cliNotFound = true;
@@ -104,11 +114,10 @@ export async function generateCommitMessage(
             if (progressCallback) {
               progressCallback("Generating with Claude CLI...");
             }
-            commitMessage = await generateWithCLI(prompt, progressCallback);
+            commitMessage = await generateWithCLI(prompt, progressCallback, signal);
             return commitMessage;
           } catch (error) {
-            const err = error as Error;
-            throw new Error(`Claude CLI error: ${err.message}`);
+            throw withPrefix("Claude CLI error", error);
           }
         } else {
           throw new Error(
@@ -120,7 +129,7 @@ export async function generateCommitMessage(
   }
 
   if (preferredMethod === "api" || preferredMethod === "auto") {
-    const apiKey = config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY;
+    const apiKey = await getApiKey();
 
     if (!apiKey && cliNotFound) {
       const userPath = await promptForCliPath();
@@ -129,11 +138,10 @@ export async function generateCommitMessage(
           if (progressCallback) {
             progressCallback("Generating with Claude CLI...");
           }
-          commitMessage = await generateWithCLI(prompt, progressCallback);
+          commitMessage = await generateWithCLI(prompt, progressCallback, signal);
           return commitMessage;
         } catch (error) {
-          const err = error as Error;
-          throw new Error(`Claude CLI error: ${err.message}`);
+          throw withPrefix("Claude CLI error", error);
         }
       }
     }
@@ -142,16 +150,16 @@ export async function generateCommitMessage(
       if (progressCallback) {
         progressCallback("Generating with Anthropic API...");
       }
-      commitMessage = await generateWithAPI(prompt, progressCallback);
+      commitMessage = await generateWithAPI(prompt, progressCallback, signal);
       return commitMessage;
     } catch (error) {
       const err = error as Error;
       if (cliNotFound && err.message.includes("ANTHROPIC_API_KEY")) {
         throw new Error(
-          "Claude CLI not found and no API key configured. Either configure CLI path in settings or set ANTHROPIC_API_KEY."
+          "Claude CLI not found and no API key configured. Either configure CLI path in settings or run 'Claude Commit: Set Anthropic API Key'."
         );
       }
-      throw new Error(`API error: ${err.message}`);
+      throw withPrefix("API error", error);
     }
   }
 
@@ -163,7 +171,8 @@ export async function editCommitMessage(
   currentMessage: string,
   userFeedback: string,
   language: Language = "en",
-  progressCallback: ProgressCallback | null = null
+  progressCallback: ProgressCallback | null = null,
+  signal?: AbortSignal
 ): Promise<string> {
   const repoPath = repo.rootUri.fsPath;
 
@@ -186,12 +195,20 @@ export async function editCommitMessage(
 
   if (preferredMethod === "cli" || preferredMethod === "auto") {
     if (await hasClaudeCodeCLI()) {
-      return await generateWithCLI(prompt, progressCallback);
+      try {
+        return await generateWithCLI(prompt, progressCallback, signal);
+      } catch (error) {
+        // Same fallback as generateCommitMessage: only when an API key exists
+        if (preferredMethod === "cli" || isCancellation(error) || !(await getApiKey())) {
+          throw error;
+        }
+        log(`CLI failed, falling back to API: ${(error as Error).message}`);
+      }
     }
   }
 
   if (preferredMethod === "api" || preferredMethod === "auto") {
-    return await generateWithAPI(prompt, progressCallback);
+    return await generateWithAPI(prompt, progressCallback, signal);
   }
 
   throw new Error("No generation method available");

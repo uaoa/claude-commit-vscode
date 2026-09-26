@@ -1,17 +1,21 @@
 import * as vscode from "vscode";
-import * as path from "path";
 import { generateCommitMessage, editCommitMessage } from "./generators/commit";
 import type { GitRepository, GitAPI, Language } from "./types";
 import { log, logError, showOutputChannel, disposeOutputChannel } from "./utils/logger";
 import { clearCliPathCache } from "./cli/detection";
 import { setGitPath } from "./utils/git";
+import { isInsideFolder } from "./utils/paths";
+import { initApiKeyStorage, setApiKeyCommand, suggestApiKeyMigration } from "./utils/apiKey";
+import { isCancellation } from "./utils/cancel";
 
 // Guards against a second click starting a parallel generation for the same message box
 let isGenerating = false;
 
-function isInsideFolder(filePath: string, folder: string): boolean {
-  const relative = path.relative(folder, filePath);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+// Bridges the progress notification's Cancel button to the CLI process / API request
+function toAbortSignal(token: vscode.CancellationToken): AbortSignal {
+  const controller = new AbortController();
+  token.onCancellationRequested(() => controller.abort());
+  return controller.signal;
 }
 
 /**
@@ -115,6 +119,7 @@ function getActiveRepository(git: GitAPI, sourceControl?: vscode.SourceControl):
 
 export function activate(context: vscode.ExtensionContext): void {
   log("Claude Commit extension activated");
+  initApiKeyStorage(context);
 
   const generateCommit = vscode.commands.registerCommand(
     "claude-commit.generate",
@@ -161,9 +166,9 @@ export function activate(context: vscode.ExtensionContext): void {
           {
             location: vscode.ProgressLocation.Notification,
             title: "Claude Commit",
-            cancellable: false,
+            cancellable: true,
           },
-          async (progress) => {
+          async (progress, token) => {
             try {
               const config = vscode.workspace.getConfiguration("claudeCommit");
               const language = config.get<Language>("language", "en");
@@ -172,7 +177,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 progress.report({ message });
               };
 
-              commitMessage = await generateCommitMessage(repo, language, updateProgress);
+              commitMessage = await generateCommitMessage(repo, language, updateProgress, "", toAbortSignal(token));
             } catch (error) {
               generationError = error as Error;
             } finally {
@@ -180,6 +185,11 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           }
         );
+
+        if (isCancellation(generationError)) {
+          log("Generation cancelled by user");
+          return;
+        }
 
         if (generationError) {
           const errorMessage = generationError instanceof Error ? generationError.message : String(generationError);
@@ -278,7 +288,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   });
 
-  context.subscriptions.push(generateCommit, generateCommitWithCustomPrompt, configWatcher);
+  const setApiKey = vscode.commands.registerCommand("claude-commit.setApiKey", setApiKeyCommand);
+
+  context.subscriptions.push(generateCommit, generateCommitWithCustomPrompt, setApiKey, configWatcher);
+
+  // Non-blocking, shown at most once per machine
+  void suggestApiKeyMigration(context);
 }
 
 async function handleCustomPrompt(repo: GitRepository): Promise<void> {
@@ -303,9 +318,9 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
     {
       location: vscode.ProgressLocation.Notification,
       title: "Claude Commit",
-      cancellable: false,
+      cancellable: true,
     },
-    async (progress) => {
+    async (progress, token) => {
       try {
         const config = vscode.workspace.getConfiguration("claudeCommit");
         const language = config.get<Language>("language", "en");
@@ -314,9 +329,12 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
           progress.report({ message });
         };
 
-        return await generateCommitMessage(repo, language, updateProgress, customPrompt);
+        return await generateCommitMessage(repo, language, updateProgress, customPrompt, toAbortSignal(token));
       } catch (error) {
         const err = error as Error;
+        if (isCancellation(error)) {
+          return undefined;
+        }
         vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
         return undefined;
       }
@@ -360,9 +378,9 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
     {
       location: vscode.ProgressLocation.Notification,
       title: "Claude Commit",
-      cancellable: false,
+      cancellable: true,
     },
-    async (progress) => {
+    async (progress, token) => {
       try {
         const config = vscode.workspace.getConfiguration("claudeCommit");
         const language = config.get<Language>("language", "en");
@@ -371,9 +389,12 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
           progress.report({ message });
         };
 
-        return await editCommitMessage(repo, currentMessage, feedback, language, updateProgress);
+        return await editCommitMessage(repo, currentMessage, feedback, language, updateProgress, toAbortSignal(token));
       } catch (error) {
         const err = error as Error;
+        if (isCancellation(error)) {
+          return undefined;
+        }
         vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
         return undefined;
       }

@@ -81,6 +81,8 @@ The extension supports custom Claude API endpoints through environment variables
 4. Review the AI-generated commit message
 5. Commit
 
+Generation can be stopped at any time with the **Cancel** button on the progress notification.
+
 **No configuration, no setup wizards, no complexity.**
 
 ## Extension Settings
@@ -89,7 +91,7 @@ This extension keeps it simple with optional settings:
 
 * `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
 * `claudeCommit.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
-* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method)
+* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Claude Commit: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
 * `claudeCommit.customModel`: Exact model ID or CLI alias that overrides `claudeCommit.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
@@ -144,12 +146,13 @@ Sources you omit are still tried last as a fallback, so detection never breaks. 
 ```
 
 ### Using Anthropic API as fallback
+Run **Claude Commit: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
 ```json
 {
-    "claudeCommit.preferredMethod": "auto",
-    "claudeCommit.apiKey": "your-api-key-here"
+    "claudeCommit.preferredMethod": "auto"
 }
 ```
+The key is looked up in this order: secret storage → `claudeCommit.apiKey` setting → `ANTHROPIC_API_KEY` environment variable. Secret storage is not covered by Settings Sync, so set the key once per machine.
 
 ### Korean interface
 ```json
@@ -331,7 +334,7 @@ The extension uses intelligent auto-detection to find Claude CLI **at runtime** 
 2. Check that Claude CLI is properly authenticated
 3. Try using API method as fallback:
    - Get API key from https://console.anthropic.com/
-   - Add to settings: `claudeCommit.apiKey`
+   - Run **Claude Commit: Set Anthropic API Key**
    - Set `claudeCommit.preferredMethod` to `api`
 
 ### Extension not working
@@ -398,6 +401,8 @@ The extension uses a login shell (`-l` flag) to ensure these environment variabl
 - Your code changes are processed through Claude CLI or Anthropic API
 - No data is stored or transmitted by this extension beyond what Claude requires
 - Authentication is handled by your existing Claude CLI setup or API key
+- The API key set via **Claude Commit: Set Anthropic API Key** is kept in the OS secret storage, never in settings files
+- The Claude CLI runs in a neutral temporary directory, so project files such as `CLAUDE.md` are not read
 - Code is only sent to Claude's servers through your authenticated session
 
 ## Examples

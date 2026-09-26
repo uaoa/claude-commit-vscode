@@ -38,7 +38,7 @@ async function git(repoPath: string, args: string[]): Promise<string> {
  * Move lock files and other generated output to the end of the diff so the
  * truncated prompt shows the meaningful changes first. Nothing is dropped.
  */
-function prioritizeDiff(diff: string): string {
+export function prioritizeDiff(diff: string): string {
   const sections = diff.split(/^(?=diff --git )/m);
   const important: string[] = [];
   const generated: string[] = [];

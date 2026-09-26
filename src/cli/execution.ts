@@ -1,9 +1,14 @@
 import * as vscode from "vscode";
 import { spawn, type ChildProcess } from "child_process";
+import * as os from "os";
 import * as path from "path";
 import type Anthropic from "@anthropic-ai/sdk";
 import { findClaudeCliPath } from "./detection";
+import { extractCommitMessage, stripCodeFences } from "./output";
+import { needsWindowsShell, quoteForCmd } from "./windows";
 import type { ProgressCallback, Model } from "../types";
+import { getApiKey } from "../utils/apiKey";
+import { GenerationCancelledError, isCancellation } from "../utils/cancel";
 import { log, logError, logCommand } from "../utils/logger";
 
 const CLI_TIMEOUT_MS = 120000;
@@ -17,9 +22,6 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
   // Models that cannot turn thinking off are handled by the CLI itself.
   MAX_THINKING_TOKENS: "0",
 };
-
-// Matches the first line of a Conventional Commits message, incl. `type!:` breaking marker
-const CONVENTIONAL_COMMIT_PATTERN = /^(feat|fix|docs|style|refactor|test|build|ci|chore|perf|revert)(\(.+?\))?!?:.+/;
 
 // API model IDs for the `claudeCommit.model` presets
 const API_MODELS: Record<Model, string> = {
@@ -63,39 +65,28 @@ function isUnknownOptionError(error: unknown): boolean {
   return `${err.message ?? ""}\n${err.stderr ?? ""}`.toLowerCase().includes("unknown option");
 }
 
-async function runClaudeCliIsolated(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
+async function runClaudeCliIsolated(
+  cliPath: string,
+  args: string[],
+  stdin: string,
+  signal?: AbortSignal
+): Promise<CliResult> {
   if (isolationFlagsSupported === false) {
-    return runClaudeCli(cliPath, args, stdin);
+    return runClaudeCli(cliPath, args, stdin, signal);
   }
 
   try {
-    const result = await runClaudeCli(cliPath, [...ISOLATION_ARGS, ...args], stdin);
+    const result = await runClaudeCli(cliPath, [...ISOLATION_ARGS, ...args], stdin, signal);
     isolationFlagsSupported = true;
     return result;
   } catch (error) {
     if (isolationFlagsSupported === null && isUnknownOptionError(error)) {
       isolationFlagsSupported = false;
       log("CLI does not support isolation flags (older version), retrying without them");
-      return runClaudeCli(cliPath, args, stdin);
+      return runClaudeCli(cliPath, args, stdin, signal);
     }
     throw error;
   }
-}
-
-// .cmd/.bat wrappers (npm installs) on Windows only run through cmd.exe;
-// native binaries (claude.exe from the installer or the VS Code extension)
-// are spawned directly, which also keeps arguments intact.
-function needsWindowsShell(cliPath: string): boolean {
-  return process.platform === "win32" && !/\.exe$/i.test(cliPath);
-}
-
-// With `shell: true` Node joins arguments with plain spaces, so an empty
-// argument (`--tools ""`) disappears and paths with spaces split apart.
-function quoteForCmd(arg: string): string {
-  if (arg !== "" && !/[\s"&|<>^()%!]/.test(arg)) {
-    return arg;
-  }
-  return `"${arg.replace(/"/g, '""')}"`;
 }
 
 function killProcessTree(child: ChildProcess): void {
@@ -107,7 +98,7 @@ function killProcessTree(child: ChildProcess): void {
   child.kill("SIGKILL");
 }
 
-function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
+function runClaudeCli(cliPath: string, args: string[], stdin: string, signal?: AbortSignal): Promise<CliResult> {
   const env = {
     ...process.env,
     ...CLI_SPEEDUP_ENV,
@@ -120,7 +111,15 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
   const spawnArgs = useShell ? args.map(quoteForCmd) : args;
 
   return new Promise((resolve, reject) => {
-    const child = spawn(command, spawnArgs, { env, shell: useShell, windowsHide: true });
+    if (signal?.aborted) {
+      reject(new GenerationCancelledError());
+      return;
+    }
+
+    // The extension host's cwd depends on how VS Code was launched, and the CLI
+    // loads CLAUDE.md and git status from it — a neutral directory keeps the
+    // output (language, style) determined by this extension's settings only.
+    const child = spawn(command, spawnArgs, { env, shell: useShell, windowsHide: true, cwd: os.tmpdir() });
 
     let stdout = "";
     let stderr = "";
@@ -138,10 +137,17 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
       }
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       error.stderr = error.stderr ?? stderr;
       error.stdout = error.stdout ?? stdout;
       reject(error);
     };
+
+    function onAbort(): void {
+      killProcessTree(child);
+      fail(new GenerationCancelledError());
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
 
     // setEncoding keeps multi-byte characters (Cyrillic, CJK, Hangul) intact across chunk boundaries
     child.stdout.setEncoding("utf8");
@@ -169,6 +175,7 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
       }
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
 
       if (timedOut) {
         const error: CliError = new Error("CLI process timed out");
@@ -197,6 +204,9 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
 }
 
 function toCliError(error: unknown, cliPath: string): Error {
+  if (isCancellation(error)) {
+    return error as Error;
+  }
   const err = error as CliError;
   if (err.killed) {
     return new Error("CLI process timed out after 2 minutes. Try a smaller diff or check your connection.");
@@ -220,29 +230,10 @@ function toCliError(error: unknown, cliPath: string): Error {
   return new Error(fullError);
 }
 
-/**
- * Strip markdown code fences (```...```) from Claude's output.
- * Handles cases where the model wraps the commit message in a fenced block
- * despite instructions not to.
- */
-function stripCodeFences(text: string): string {
-  let result = text;
-
-  // Match ```optional-lang\n...\n``` (entire fenced block) and extract content
-  const fullFenceMatch = result.match(/```[^\n]*\n([\s\S]*?)\n```/);
-  if (fullFenceMatch) {
-    result = fullFenceMatch[1];
-  } else {
-    // Remove dangling fence markers anywhere (opening ```lang or closing ```)
-    result = result.replace(/^[ \t]*```[^\n]*$/gmu, "");
-  }
-
-  return result.trim();
-}
-
 export async function generateWithCLI(
   prompt: string,
-  progressCallback: ProgressCallback | null = null
+  progressCallback: ProgressCallback | null = null,
+  signal?: AbortSignal
 ): Promise<string> {
   const cliPath = await findClaudeCliPath();
 
@@ -266,7 +257,7 @@ export async function generateWithCLI(
   let stdout: string;
   let stderr: string;
   try {
-    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt));
+    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt, signal));
   } catch (error) {
     throw toCliError(error, cliPath);
   }
@@ -292,69 +283,19 @@ export async function generateWithCLI(
     throw new Error("Empty response from CLI. Check Output panel for details.");
   }
 
-  const cleanedStdout = stripCodeFences(stdout);
-
-  const lines = cleanedStdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  if (lines.length === 0) {
+  const message = extractCommitMessage(stdout, config.get<boolean>("multiLineCommit", false));
+  if (!message) {
     logError("No valid lines in CLI output", new Error(`stdout: ${stdout}`));
     throw new Error("Empty response from CLI. Check Output panel for details.");
   }
-
-  const multiLine = config.get<boolean>("multiLineCommit", false);
-  if (multiLine) {
-    let startIndex = -1;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (CONVENTIONAL_COMMIT_PATTERN.test(lines[i])) {
-        startIndex = i;
-        break;
-      }
-    }
-
-    // Use the non-trimmed cleaned stdout to preserve blank lines between subject/body/footer.
-    const preserveBlankLines = cleanedStdout.split("\n").map((line) => line.replace(/\s+$/u, ""));
-
-    // Drop leading empty lines
-    while (preserveBlankLines.length > 0 && preserveBlankLines[0].trim().length === 0) {
-      preserveBlankLines.shift();
-    }
-    // Drop trailing empty lines
-    while (preserveBlankLines.length > 0 && preserveBlankLines[preserveBlankLines.length - 1].trim().length === 0) {
-      preserveBlankLines.pop();
-    }
-
-    if (startIndex >= 0) {
-      // Find the same starting line in preserveBlankLines
-      const target = lines[startIndex];
-      const startInPreserve = preserveBlankLines.findIndex((l) => l.trim() === target);
-      if (startInPreserve >= 0) {
-        return preserveBlankLines.slice(startInPreserve).join("\n");
-      }
-      return lines.slice(startIndex).join("\n");
-    }
-
-    if (preserveBlankLines.length > 0) {
-      return preserveBlankLines.join("\n");
-    }
-  }
-
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (CONVENTIONAL_COMMIT_PATTERN.test(lines[i])) {
-      return lines[i];
-    }
-  }
-
-  return lines[lines.length - 1] || "chore: update code";
+  return message;
 }
 
 export async function generateWithCLIManaged(
   prompt: string,
   systemPrompt: string,
-  progressCallback: ProgressCallback | null = null
+  progressCallback: ProgressCallback | null = null,
+  signal?: AbortSignal
 ): Promise<string> {
   const cliPath = await findClaudeCliPath();
 
@@ -378,7 +319,7 @@ export async function generateWithCLIManaged(
   let stdout: string;
   let stderr: string;
   try {
-    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt));
+    ({ stdout, stderr } = await runClaudeCliIsolated(cliPath, args, prompt, signal));
   } catch (error) {
     throw toCliError(error, cliPath);
   }
@@ -399,13 +340,16 @@ export async function generateWithCLIManaged(
 
 export async function generateWithAPI(
   prompt: string,
-  progressCallback: ProgressCallback | null = null
+  progressCallback: ProgressCallback | null = null,
+  signal?: AbortSignal
 ): Promise<string> {
   const config = vscode.workspace.getConfiguration("claudeCommit");
-  const apiKey = config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY;
+  const apiKey = await getApiKey();
 
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not found. Set it in extension settings or environment variable.");
+    throw new Error(
+      "ANTHROPIC_API_KEY not found. Run 'Claude Commit: Set Anthropic API Key' or set the ANTHROPIC_API_KEY environment variable."
+    );
   }
 
   const { preset, custom } = getModelSetting(config);
@@ -433,10 +377,15 @@ export async function generateWithAPI(
 
   let message: Anthropic.Message;
   try {
-    message = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming);
+    message = await anthropic.messages.create(params as unknown as Anthropic.MessageCreateParamsNonStreaming, {
+      signal,
+    });
   } catch (error) {
+    if (error instanceof sdk.APIUserAbortError || signal?.aborted) {
+      throw new GenerationCancelledError();
+    }
     if (error instanceof sdk.AuthenticationError) {
-      throw new Error("Invalid API key. Check your ANTHROPIC_API_KEY in settings.");
+      throw new Error("Invalid API key. Run 'Claude Commit: Set Anthropic API Key' to update it.");
     }
     if (error instanceof sdk.RateLimitError) {
       throw new Error("Rate limit exceeded. Please wait and try again.");
