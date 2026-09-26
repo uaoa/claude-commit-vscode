@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { spawn } from "child_process";
+import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import { findClaudeCliPath } from "./detection";
 import type { ProgressCallback, Model } from "../types";
@@ -56,6 +56,31 @@ async function runClaudeCliIsolated(cliPath: string, args: string[], stdin: stri
   }
 }
 
+// .cmd/.bat wrappers (npm installs) on Windows only run through cmd.exe;
+// native binaries (claude.exe from the installer or the VS Code extension)
+// are spawned directly, which also keeps arguments intact.
+function needsWindowsShell(cliPath: string): boolean {
+  return process.platform === "win32" && !/\.exe$/i.test(cliPath);
+}
+
+// With `shell: true` Node joins arguments with plain spaces, so an empty
+// argument (`--tools ""`) disappears and paths with spaces split apart.
+function quoteForCmd(arg: string): string {
+  if (arg !== "" && !/[\s"&|<>^()%!]/.test(arg)) {
+    return arg;
+  }
+  return `"${arg.replace(/"/g, '""')}"`;
+}
+
+function killProcessTree(child: ChildProcess): void {
+  if (process.platform === "win32" && child.pid) {
+    // child.kill() would only stop cmd.exe and leave claude running.
+    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true }).on("error", () => {});
+    return;
+  }
+  child.kill("SIGKILL");
+}
+
 function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<CliResult> {
   const env = {
     ...process.env,
@@ -64,12 +89,12 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
     PATH: `${path.dirname(cliPath)}${path.delimiter}${process.env.PATH ?? ""}`,
   };
 
-  // .cmd/.bat wrappers on Windows only run through a shell.
-  const useShell = process.platform === "win32";
-  const command = useShell && cliPath.includes(" ") ? `"${cliPath}"` : cliPath;
+  const useShell = needsWindowsShell(cliPath);
+  const command = useShell ? quoteForCmd(cliPath) : cliPath;
+  const spawnArgs = useShell ? args.map(quoteForCmd) : args;
 
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { env, shell: useShell, windowsHide: true });
+    const child = spawn(command, spawnArgs, { env, shell: useShell, windowsHide: true });
 
     let stdout = "";
     let stderr = "";
@@ -78,7 +103,7 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
 
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      killProcessTree(child);
     }, CLI_TIMEOUT_MS);
 
     const fail = (error: CliError): void => {
@@ -95,7 +120,7 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString("utf-8");
       if (stdout.length > MAX_OUTPUT_BYTES) {
-        child.kill("SIGKILL");
+        killProcessTree(child);
         fail(new Error("CLI output exceeded buffer limit"));
       }
     });
@@ -314,9 +339,9 @@ export async function generateWithCLIManaged(
   }
 
   const args = [...BASE_CLI_ARGS, "--model", "haiku"];
-  // Windows runs through a shell (.cmd wrapper), where a multi-line system
-  // prompt cannot be quoted safely — skipped there, as before.
-  if (process.platform !== "win32") {
+  // .cmd wrappers run through cmd.exe, where a multi-line system prompt
+  // cannot be quoted safely — skipped there, as before.
+  if (!needsWindowsShell(cliPath)) {
     args.push("--system-prompt", systemPrompt);
   }
 

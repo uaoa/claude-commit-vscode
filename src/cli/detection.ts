@@ -37,6 +37,8 @@ function getCommonCliPaths(): string[] {
 
   if (process.platform === "win32") {
     paths.push(
+      // Native installer
+      path.join(home, ".local", "bin", "claude.exe"),
       path.join(home, "AppData", "Roaming", "npm", "claude.cmd"),
       path.join(home, "AppData", "Local", "npm", "claude.cmd"),
       path.join(home, ".claude", "local", "claude.exe"),
@@ -85,6 +87,25 @@ async function fileExists(filePath: string): Promise<boolean> {
       return false;
     }
   }
+}
+
+const WINDOWS_EXECUTABLE_EXTENSIONS = [".exe", ".cmd", ".bat"];
+
+/**
+ * npm installs an extensionless POSIX shell script next to claude.cmd, and
+ * `where claude` may list it first. cmd.exe cannot run it, so on Windows
+ * prefer a sibling with an executable extension.
+ */
+async function toWindowsExecutable(filePath: string): Promise<string> {
+  if (process.platform !== "win32" || path.extname(filePath)) {
+    return filePath;
+  }
+  for (const ext of WINDOWS_EXECUTABLE_EXTENSIONS) {
+    if (await fileExists(filePath + ext)) {
+      return filePath + ext;
+    }
+  }
+  return filePath;
 }
 
 async function findCliWithGlob(pattern: string): Promise<string | null> {
@@ -214,10 +235,21 @@ async function findCliOnPath(): Promise<string | null> {
       env: { ...process.env },
       shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
     });
-    const foundPath = stdout.trim().split("\n")[0];
-    if (foundPath && (await fileExists(foundPath))) {
-      log(`Found CLI via ${cmd}: ${foundPath}`);
-      return foundPath;
+    // `where` prints every match with CRLF line endings
+    const candidates = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (process.platform === "win32") {
+      const hasExecutableExt = (p: string) => WINDOWS_EXECUTABLE_EXTENSIONS.includes(path.extname(p).toLowerCase());
+      candidates.sort((a, b) => Number(hasExecutableExt(b)) - Number(hasExecutableExt(a)));
+    }
+    for (const candidate of candidates) {
+      const foundPath = await toWindowsExecutable(candidate);
+      if (await fileExists(foundPath)) {
+        log(`Found CLI via ${cmd}: ${foundPath}`);
+        return foundPath;
+      }
     }
   } catch (err) {
     log(`which/where command failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -273,9 +305,10 @@ export async function findClaudeCliPath(): Promise<string | null> {
 
   if (userPath?.trim()) {
     log(`Checking user-configured CLI path: ${userPath}`);
-    if (await fileExists(userPath)) {
-      log(`Found CLI at user-configured path: ${userPath}`);
-      return userPath;
+    const resolvedUserPath = await toWindowsExecutable(userPath.trim());
+    if (await fileExists(resolvedUserPath)) {
+      log(`Found CLI at user-configured path: ${resolvedUserPath}`);
+      return resolvedUserPath;
     }
     throw new Error(`Configured CLI path not found: ${userPath}`);
   }
