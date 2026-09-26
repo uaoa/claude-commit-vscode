@@ -422,9 +422,19 @@ Found a bug or have a feature request? Please open an issue on our [GitHub repos
 
 ## Author
 
-Created by **Zakharii Melnyk**
+Created by **[Zakharii Melnyk](https://uaoa.github.io/)**, a Ukrainian full-stack engineer from Kyiv and founder of AOA. Builds web products, iOS apps and developer tools.
+
+- Website: [uaoa.github.io](https://uaoa.github.io/)
 - GitHub: [@uaoa](https://github.com/uaoa)
-- LinkedIn: [undef-zakhar](https://www.linkedin.com/in/undef-zakhar)
+- LinkedIn: [undef-zakhar](https://www.linkedin.com/in/undef-zakhar/)
+- YouTube: [@undefzakhar](https://www.youtube.com/@undefzakhar)
+- Telegram: [@undefZakhar](https://t.me/undefZakhar)
+
+Other projects:
+
+- [whatsmyera.com](https://whatsmyera.com/): what happened during your lifetime
+- [wherethefuckismy.money](https://wherethefuckismy.money/): real purchasing power calculator for incomes in Ukraine
+- [AOA](https://aoa.com.ua/): on a mission to get people out more
 
 ## License
 

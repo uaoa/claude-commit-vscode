@@ -18,7 +18,9 @@
 		"ai",
 		"claude",
 		"conventional-commits",
-		"anthropic"
+		"anthropic",
+		"commit message",
+		"claude code"
 	],
 	"activationEvents": [
 		"onStartupFinished"
@@ -260,11 +262,15 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/uaoa/claude-commit-vscode.git"
+		"url": "https://github.com/uaoa/claude-commit-vscode"
+	},
+	"homepage": "https://github.com/uaoa/claude-commit-vscode#readme",
+	"bugs": {
+		"url": "https://github.com/uaoa/claude-commit-vscode/issues"
 	},
 	"author": {
 		"name": "Zakharii Melnyk",
-		"url": "https://github.com/uaoa"
+		"url": "https://uaoa.github.io/"
 	},
 	"license": "MIT"
 }
