@@ -4,7 +4,3 @@
 !README.md
 !LICENSE
 !icon.png
-!node_modules/@anthropic-ai/sdk/package.json
-!node_modules/@anthropic-ai/sdk/LICENSE
-!node_modules/@anthropic-ai/sdk/**/*.js
-!node_modules/@anthropic-ai/sdk/**/*.d.ts

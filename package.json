@@ -234,6 +234,7 @@
 		"format": "biome format --write src"
 	},
 	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.68.0",
 		"@biomejs/biome": "2.4.11",
 		"@types/node": "^18.0.0",
 		"@types/vscode": "^1.75.0",
@@ -243,9 +244,6 @@
 		"typescript": "^5.3.0",
 		"webpack": "^5.88.0",
 		"webpack-cli": "^5.1.4"
-	},
-	"optionalDependencies": {
-		"@anthropic-ai/sdk": "^0.68.0"
 	},
 	"repository": {
 		"type": "git",
