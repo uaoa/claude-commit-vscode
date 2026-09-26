@@ -241,6 +241,6 @@ ${stats}
 ${diff.slice(0, 4000)}
 
 Regenerate the commit message considering user feedback.
-Follow conventional commits format. Write it in English.
+Keep the format of the current commit message (type/scope prefix, tense, single-line or multi-line) unless the feedback asks to change it. Write it in English.
 Return ONLY the new commit message, no explanations, no markdown, no code fences.`;
 }

@@ -243,6 +243,6 @@ ${stats}
 ${diff.slice(0, 4000)}
 
 根据用户反馈重新生成 commit message。
-遵循 conventional commits 格式。
+保持当前 commit message 的格式（type/scope 前缀、时态、单行或多行），除非用户反馈要求更改。
 仅返回新的 commit message，不要有任何解释，不要 markdown，不要代码块。`;
 }
