@@ -243,7 +243,8 @@
 		"watch": "webpack --watch",
 		"lint": "biome check src",
 		"lint:fix": "biome check --write src",
-		"format": "biome format --write src"
+		"format": "biome format --write src",
+		"test": "npm run package && tsc -p tsconfig.test.json && node --test out/test/*.test.js"
 	},
 	"devDependencies": {
 		"@anthropic-ai/sdk": "^0.68.0",
