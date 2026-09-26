@@ -12,6 +12,9 @@ export interface GitRepository {
 }
 
 export interface GitAPI {
+  git?: {
+    path?: string;
+  };
   repositories: GitRepository[];
   state: {
     selectedRepositoryIndex?: number;

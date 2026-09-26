@@ -27,7 +27,8 @@ export function createGenerationPrompt(
     const hasDiff = template.includes("{diff}");
     const hasStats = template.includes("{stats}");
 
-    let rendered = template.replace(/\{diff\}/g, diff.slice(0, 6000)).replace(/\{stats\}/g, stats);
+    // Function replacers: a string replacement would interpret `$&`, `$'`, `$1` found in the diff itself
+    let rendered = template.replace(/\{diff\}/g, () => diff.slice(0, 6000)).replace(/\{stats\}/g, () => stats);
 
     // If the user forgot to include placeholders, append the diff/stats so Claude has context.
     if (!hasDiff && !hasStats) {

@@ -4,6 +4,7 @@ import { getDiff } from "../utils/git";
 import { createGenerationPrompt, createEditPrompt, createManagedPrompt } from "../prompts/generation";
 import { hasClaudeCodeCLI, promptForCliPath } from "../cli/detection";
 import { generateWithCLI, generateWithCLIManaged, generateWithAPI } from "../cli/execution";
+import { log } from "../utils/logger";
 
 export async function generateCommitMessage(
   repo: GitRepository,
@@ -87,10 +88,12 @@ export async function generateCommitMessage(
         return commitMessage;
       } catch (error) {
         const err = error as Error;
-        if (preferredMethod === "cli") {
+        // Without an API key there is nothing to fall back to — surface the real
+        // CLI failure instead of a misleading "ANTHROPIC_API_KEY not found".
+        if (preferredMethod === "cli" || !(config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY)) {
           throw new Error(`Claude CLI error: ${err.message}`);
         }
-        console.warn(`CLI failed, trying API: ${err.message}`);
+        log(`CLI failed, falling back to API: ${err.message}`);
       }
     } else {
       cliNotFound = true;

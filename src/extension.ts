@@ -1,8 +1,18 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { generateCommitMessage, editCommitMessage } from "./generators/commit";
 import type { GitRepository, GitAPI, Language } from "./types";
 import { log, logError, showOutputChannel, disposeOutputChannel } from "./utils/logger";
 import { clearCliPathCache } from "./cli/detection";
+import { setGitPath } from "./utils/git";
+
+// Guards against a second click starting a parallel generation for the same message box
+let isGenerating = false;
+
+function isInsideFolder(filePath: string, folder: string): boolean {
+  const relative = path.relative(folder, filePath);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
 
 /**
  * Show an information message that auto-closes after a specified timeout.
@@ -89,11 +99,13 @@ function getActiveRepository(git: GitAPI, sourceControl?: vscode.SourceControl):
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
     const activeFilePath = activeEditor.document.uri.fsPath;
-    for (const repo of git.repositories) {
-      const repoPath = repo.rootUri.fsPath;
-      if (activeFilePath.startsWith(repoPath)) {
-        return repo;
-      }
+    // Deepest match wins so a nested repo/submodule beats its parent;
+    // path.relative avoids "/repo" matching "/repo-other/file".
+    const match = git.repositories
+      .filter((repo) => isInsideFolder(activeFilePath, repo.rootUri.fsPath))
+      .sort((a, b) => b.rootUri.fsPath.length - a.rootUri.fsPath.length)[0];
+    if (match) {
+      return match;
     }
   }
 
@@ -115,6 +127,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         const git = gitExtension.exports.getAPI(1) as GitAPI;
+        setGitPath(git.git?.path);
         if (git.repositories.length === 0) {
           vscode.window.showErrorMessage("No Git repository found");
           return;
@@ -134,6 +147,12 @@ export function activate(context: vscode.ExtensionContext): void {
           vscode.window.showWarningMessage("No changes to commit. Stage files first.");
           return;
         }
+
+        if (isGenerating) {
+          vscode.window.showInformationMessage("Commit message generation is already in progress.");
+          return;
+        }
+        isGenerating = true;
 
         let commitMessage: string | null = null;
         let generationError: unknown = null;
@@ -156,6 +175,8 @@ export function activate(context: vscode.ExtensionContext): void {
               commitMessage = await generateCommitMessage(repo, language, updateProgress);
             } catch (error) {
               generationError = error as Error;
+            } finally {
+              isGenerating = false;
             }
           }
         );
@@ -214,6 +235,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         const git = gitExtension.exports.getAPI(1) as GitAPI;
+        setGitPath(git.git?.path);
         if (git.repositories.length === 0) {
           vscode.window.showErrorMessage("No Git repository found");
           return;
@@ -275,7 +297,9 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
     return;
   }
 
-  await vscode.window.withProgress(
+  // The follow-up prompt runs after withProgress resolves, otherwise the
+  // progress notification keeps spinning while the user types.
+  const newMessage = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: "Claude Commit",
@@ -290,31 +314,30 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
           progress.report({ message });
         };
 
-        const newMessage = await generateCommitMessage(repo, language, updateProgress, customPrompt);
-
-        if (newMessage) {
-          repo.inputBox.value = newMessage;
-
-          // Show message with 5 second auto-dismiss
-          const messagePromise = vscode.window.showInformationMessage(
-            "Commit message regenerated!",
-            "Custom prompt",
-            "OK"
-          );
-          const timeoutPromise = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 5000));
-
-          const action = await Promise.race([messagePromise, timeoutPromise]);
-
-          if (action === "Custom prompt") {
-            await handleCustomPrompt(repo);
-          }
-        }
+        return await generateCommitMessage(repo, language, updateProgress, customPrompt);
       } catch (error) {
         const err = error as Error;
         vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
+        return undefined;
       }
     }
   );
+
+  if (!newMessage) {
+    return;
+  }
+
+  repo.inputBox.value = newMessage;
+
+  // Show message with 5 second auto-dismiss
+  const messagePromise = vscode.window.showInformationMessage("Commit message regenerated!", "Custom prompt", "OK");
+  const timeoutPromise = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 5000));
+
+  const action = await Promise.race([messagePromise, timeoutPromise]);
+
+  if (action === "Custom prompt") {
+    await handleCustomPrompt(repo);
+  }
 }
 
 async function handleEditWithFeedback(repo: GitRepository, currentMessage: string): Promise<void> {
@@ -333,7 +356,7 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
     return;
   }
 
-  await vscode.window.withProgress(
+  const newMessage = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: "Claude Commit",
@@ -348,23 +371,26 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
           progress.report({ message });
         };
 
-        const newMessage = await editCommitMessage(repo, currentMessage, feedback, language, updateProgress);
-
-        if (newMessage) {
-          repo.inputBox.value = newMessage;
-
-          const action = await vscode.window.showInformationMessage("Commit message regenerated!", "Edit again", "OK");
-
-          if (action === "Edit again") {
-            await handleEditWithFeedback(repo, newMessage);
-          }
-        }
+        return await editCommitMessage(repo, currentMessage, feedback, language, updateProgress);
       } catch (error) {
         const err = error as Error;
         vscode.window.showErrorMessage(`Failed to regenerate: ${err.message}`);
+        return undefined;
       }
     }
   );
+
+  if (!newMessage) {
+    return;
+  }
+
+  repo.inputBox.value = newMessage;
+
+  const action = await vscode.window.showInformationMessage("Commit message regenerated!", "Edit again", "OK");
+
+  if (action === "Edit again") {
+    await handleEditWithFeedback(repo, newMessage);
+  }
 }
 
 export function deactivate(): void {

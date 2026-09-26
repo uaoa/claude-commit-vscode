@@ -22,7 +22,7 @@ ${diffContent}
 
 ${styleInstructions}
 
-Return ONLY the commit message in the specified format, no explanations, no markdown, no code fences (no \`\`\`).`;
+Write the commit message in English. Return ONLY the commit message in the specified format, no explanations, no markdown, no code fences (no \`\`\`).`;
   }
 
   return `Analyze git changes and generate commit message.
@@ -35,7 +35,7 @@ ${diffContent}
 
 ${styleInstructions}
 
-Return ONLY the commit message (one line), no explanations, no markdown, no code fences (no \`\`\`).`;
+Write the commit message in English. Return ONLY the commit message (one line), no explanations, no markdown, no code fences (no \`\`\`).`;
 }
 
 function getTenseRules(tense: Tense): { instruction: string; wrong: string; right: string; verbs: string } {
@@ -196,6 +196,7 @@ export function getManagedPrompt(
   let systemPrompt = `You are a "Git Commit Message Generator" function. You have no conversational ability. Output ONLY the commit message in plain text.
 
 Rules:
+- Write the commit message in English
 - First line: <feat|fix|docs|style|refactor|test|build|ci|perf|chore|revert>(scope): <subject>
 ${tenseRule}
 - No markdown, no code blocks, no code fences (no \`\`\`), no explanations, no preamble`;
@@ -240,6 +241,6 @@ ${stats}
 ${diff.slice(0, 4000)}
 
 Regenerate the commit message considering user feedback.
-Follow conventional commits format.
+Follow conventional commits format. Write it in English.
 Return ONLY the new commit message, no explanations, no markdown, no code fences.`;
 }

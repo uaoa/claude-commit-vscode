@@ -17,6 +17,9 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
   MAX_THINKING_TOKENS: "0",
 };
 
+// Matches the first line of a Conventional Commits message, incl. `type!:` breaking marker
+const CONVENTIONAL_COMMIT_PATTERN = /^(feat|fix|docs|style|refactor|test|build|ci|chore|perf|revert)(\(.+?\))?!?:.+/;
+
 const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
 
 // Keeps MCP servers out of the call — they slow generation and steer output
@@ -121,16 +124,20 @@ function runClaudeCli(cliPath: string, args: string[], stdin: string): Promise<C
       reject(error);
     };
 
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf-8");
+    // setEncoding keeps multi-byte characters (Cyrillic, CJK, Hangul) intact across chunk boundaries
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
       if (stdout.length > MAX_OUTPUT_BYTES) {
         killProcessTree(child);
         fail(new Error("CLI output exceeded buffer limit"));
       }
     });
 
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf-8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
     });
 
     child.on("error", (error: CliError) => {
@@ -279,11 +286,10 @@ export async function generateWithCLI(
 
   const multiLine = config.get<boolean>("multiLineCommit", false);
   if (multiLine) {
-    const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
     let startIndex = -1;
 
     for (let i = 0; i < lines.length; i++) {
-      if (conventionalCommitPattern.test(lines[i])) {
+      if (CONVENTIONAL_COMMIT_PATTERN.test(lines[i])) {
         startIndex = i;
         break;
       }
@@ -316,10 +322,8 @@ export async function generateWithCLI(
     }
   }
 
-  const conventionalCommitPattern = /^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+?\))?:.+/;
-
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (conventionalCommitPattern.test(lines[i])) {
+    if (CONVENTIONAL_COMMIT_PATTERN.test(lines[i])) {
       return lines[i];
     }
   }
