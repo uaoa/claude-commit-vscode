@@ -27,6 +27,9 @@ jobs:
       - name: Build extension
         run: npm run package
 
+      - name: Test (unit + bundle smoke tests)
+        run: npm test
+
       - name: Package VSIX (dry run)
         run: npx vsce package --no-dependencies -o claude-git-commit-ci.vsix
 
