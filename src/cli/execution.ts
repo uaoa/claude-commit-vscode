@@ -11,6 +11,10 @@ const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const CLI_SPEEDUP_ENV: Record<string, string> = {
   DISABLE_AUTOUPDATER: "1",
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+  // A commit message needs no extended thinking: with it Haiku spends
+  // 500-1500 output tokens (8-15s) on a one-line answer, without it ~1.5s.
+  // Models that cannot turn thinking off are handled by the CLI itself.
+  MAX_THINKING_TOKENS: "0",
 };
 
 const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effort", "low"];
