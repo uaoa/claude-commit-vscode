@@ -100,7 +100,8 @@ This extension keeps it simple with optional settings:
 * `claudeCommit.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
 * `claudeCommit.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
 * `claudeCommit.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
-* `claudeCommit.messageAutoCloseSeconds`: Auto-close timeout for success message in seconds (0 to disable) – defaults to `5`
+* `claudeCommit.messageAutoCloseSeconds`: Seconds before the success message is hidden into the Notification Center (0 to keep it on screen) – defaults to `5`
+* `claudeCommit.showSuccessMessage`: Show a notification after the commit message is generated – defaults to `true`
 * `claudeCommit.privacyMode`: *Deprecated, no effect* – since 1.0.20 the prompt is passed via stdin and never written to disk
 * `claudeCommit.commitStyle`: Commit message style format (`conventional`, `prefix`, `default`, or `custom`) – defaults to `conventional`
 * `claudeCommit.customPromptTemplate`: Custom prompt template with `{diff}` and `{stats}` variables (only used when commitStyle is `custom`) – defaults to empty
@@ -231,7 +232,15 @@ Keeps the Co-Authored-By signature in commit messages. Only works in Claude Code
     "claudeCommit.messageAutoCloseSeconds": 10
 }
 ```
-Set to `0` to disable auto-close and keep the success message visible until manually dismissed.
+Set to `0` to disable auto-close and keep the success message visible until manually dismissed. After the timeout the message moves to the Notification Center, where its buttons still work.
+
+### Hide the success message
+```json
+{
+    "claudeCommit.showSuccessMessage": false
+}
+```
+Only the progress notification is shown while Claude is working, and it disappears as soon as the commit message is ready. Errors are still reported.
 
 ### Privacy mode for temporary files
 `claudeCommit.privacyMode` is deprecated and has no effect: since 1.0.20 the prompt is passed to the CLI via stdin and never touches disk.

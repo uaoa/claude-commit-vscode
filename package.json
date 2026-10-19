@@ -186,7 +186,13 @@
 					"default": 5,
 					"minimum": 0,
 					"maximum": 60,
-					"description": "Auto-close timeout for the success message in seconds. Set to 0 to disable auto-close.",
+					"markdownDescription": "Seconds before the success message is hidden into the Notification Center. Set to `0` to keep it on screen until dismissed. To skip the success message entirely, disable `#claudeCommit.showSuccessMessage#`.",
+					"order": 11
+				},
+				"claudeCommit.showSuccessMessage": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show a notification after the commit message is generated. When disabled, only the progress notification is shown while Claude is working and it disappears as soon as the message is ready (errors are still reported).",
 					"order": 11
 				},
 				"claudeCommit.privacyMode": {

@@ -19,6 +19,7 @@ let repoDir: string;
 let config: Record<string, unknown>;
 let secretStore: Map<string, string>;
 let errors: string[];
+let infos: string[];
 let cancelAfterMs: number | undefined;
 const commands: Record<string, AnyFn> = {};
 const repo = {
@@ -63,7 +64,10 @@ const vscodeMock = {
       }
       return cb({ report() {} }, token);
     },
-    showInformationMessage: () => Promise.resolve(undefined),
+    showInformationMessage: (message: string) => {
+      infos.push(message);
+      return Promise.resolve(undefined);
+    },
     showWarningMessage: (message: string) => {
       errors.push(message);
       return Promise.resolve(undefined);
@@ -120,6 +124,7 @@ before(() => {
   secretStore = new Map();
   config = {};
   errors = [];
+  infos = [];
   extension.activate({
     subscriptions: [],
     secrets: {
@@ -138,6 +143,7 @@ after(() => {
 beforeEach(() => {
   config = {};
   errors = [];
+  infos = [];
   cancelAfterMs = undefined;
   secretStore.clear();
 });
@@ -244,4 +250,17 @@ test("auto mode surfaces the CLI error when no API key is configured", { skip: i
   await generate();
   assert.equal(errors.length, 1);
   assert.match(errors[0], /Claude CLI error: .*Not logged in/);
+});
+
+test("success message respects showSuccessMessage", { skip: isWindows }, async () => {
+  const cli = writeFakeCli("claude-quick", "console.log('feat: quick');");
+  config = { preferredMethod: "cli", cliPath: cli };
+  await generate();
+  assert.deepEqual(infos, ["Commit message generated!"]);
+
+  infos = [];
+  config = { preferredMethod: "cli", cliPath: cli, showSuccessMessage: false };
+  await generate();
+  assert.equal(repo.inputBox.value, "feat: quick");
+  assert.deepEqual(infos, []);
 });

@@ -19,36 +19,35 @@ function toAbortSignal(token: vscode.CancellationToken): AbortSignal {
 }
 
 /**
- * Show an information message that auto-closes after a specified timeout.
- * Returns the selected button or undefined if auto-closed/dismissed.
+ * Show the success notification according to the user's settings.
+ * Resolves with the clicked button, or undefined when the message is disabled or dismissed.
  */
-function showAutoCloseMessage(
-  message: string,
-  timeoutSeconds: number,
-  ...buttons: string[]
-): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    let resolved = false;
+async function showSuccessMessage(message: string, ...buttons: string[]): Promise<string | undefined> {
+  const config = vscode.workspace.getConfiguration("claudeCommit");
+  if (!config.get<boolean>("showSuccessMessage", true)) {
+    return undefined;
+  }
 
-    const resolveOnce = (result: string | undefined) => {
-      if (!resolved) {
-        resolved = true;
-        resolve(result);
-      }
-    };
+  const timeoutSeconds = config.get<number>("messageAutoCloseSeconds", 5);
+  if (timeoutSeconds <= 0) {
+    return vscode.window.showInformationMessage(message, ...buttons);
+  }
 
-    // Auto-close timer
-    const timer = setTimeout(() => {
-      resolveOnce(undefined);
-    }, timeoutSeconds * 1000);
+  // VS Code has no API to close a notification, so once the timeout passes the
+  // toast is hidden into the Notification Center; its buttons keep working there.
+  let settled = false;
+  const timer = setTimeout(() => {
+    if (!settled) {
+      void vscode.commands.executeCommand("notifications.hideToasts");
+    }
+  }, timeoutSeconds * 1000);
 
-    // Show message with countdown hint in text
-    const messageWithHint = `${message} (${timeoutSeconds}s)`;
-    vscode.window.showInformationMessage(messageWithHint, ...buttons).then((result) => {
-      clearTimeout(timer);
-      resolveOnce(result);
-    });
-  });
+  try {
+    return await vscode.window.showInformationMessage(message, ...buttons);
+  } finally {
+    settled = true;
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -212,14 +211,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
           const buttons = isManagedMode ? ["Custom prompt"] : ["Edit with feedback"];
 
-          // Get auto-close timeout from config
-          const autoCloseSeconds = config.get<number>("messageAutoCloseSeconds", 5);
-
-          // Show message with auto-close (or without if set to 0)
-          const action =
-            autoCloseSeconds > 0
-              ? await showAutoCloseMessage("Commit message generated!", autoCloseSeconds, ...buttons)
-              : await vscode.window.showInformationMessage("Commit message generated!", ...buttons);
+          const action = await showSuccessMessage("Commit message generated!", ...buttons);
 
           if (action === "Edit with feedback") {
             await handleEditWithFeedback(repo, commitMessage);
@@ -347,11 +339,7 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
 
   repo.inputBox.value = newMessage;
 
-  // Show message with 5 second auto-dismiss
-  const messagePromise = vscode.window.showInformationMessage("Commit message regenerated!", "Custom prompt", "OK");
-  const timeoutPromise = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 5000));
-
-  const action = await Promise.race([messagePromise, timeoutPromise]);
+  const action = await showSuccessMessage("Commit message regenerated!", "Custom prompt", "OK");
 
   if (action === "Custom prompt") {
     await handleCustomPrompt(repo);
@@ -407,7 +395,7 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
 
   repo.inputBox.value = newMessage;
 
-  const action = await vscode.window.showInformationMessage("Commit message regenerated!", "Edit again", "OK");
+  const action = await showSuccessMessage("Commit message regenerated!", "Edit again", "OK");
 
   if (action === "Edit again") {
     await handleEditWithFeedback(repo, newMessage);
