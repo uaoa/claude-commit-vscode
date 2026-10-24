@@ -1,10 +1,14 @@
 {
 	"name": "claude-git-commit",
 	"displayName": "Claude Git Commit",
-	"description": "AI-powered git commit message generator using Claude AI",
+	"description": "Generates Git commit messages from your diff with the Claude Code CLI or the Anthropic API. Unofficial, not affiliated with Anthropic.",
 	"version": "1.1.3",
 	"publisher": "ZakhariiMelnyk",
 	"icon": "icon.png",
+	"galleryBanner": {
+		"color": "#1C1B22",
+		"theme": "dark"
+	},
 	"engines": {
 		"vscode": "^1.75.0"
 	},
@@ -31,18 +35,18 @@
 			{
 				"command": "claude-commit.generate",
 				"title": "Generate Commit Message",
-				"category": "Claude Commit",
+				"category": "Claude Git Commit",
 				"icon": "$(sparkle)"
 			},
 			{
 				"command": "claude-commit.generateWithCustomPrompt",
 				"title": "Generate Commit Message with Custom Prompt",
-				"category": "Claude Commit"
+				"category": "Claude Git Commit"
 			},
 			{
 				"command": "claude-commit.setApiKey",
 				"title": "Set Anthropic API Key",
-				"category": "Claude Commit"
+				"category": "Claude Git Commit"
 			}
 		],
 		"menus": {
@@ -55,7 +59,7 @@
 			]
 		},
 		"configuration": {
-			"title": "Claude Commit",
+			"title": "Claude Git Commit",
 			"properties": {
 				"claudeCommit.cliPath": {
 					"type": "string",
@@ -94,7 +98,7 @@
 					"type": "string",
 					"default": "",
 					"order": 3,
-					"markdownDescription": "Anthropic API key (optional if using Claude Code CLI). **Prefer the command `Claude Commit: Set Anthropic API Key`**, which keeps the key in the OS secret storage instead of plain-text settings.json. A key stored there takes precedence over this setting."
+					"markdownDescription": "Anthropic API key (optional if using Claude Code CLI). **Prefer the command `Claude Git Commit: Set Anthropic API Key`**, which keeps the key in the OS secret storage instead of plain-text settings.json. A key stored there takes precedence over this setting."
 				},
 				"claudeCommit.preferredMethod": {
 					"type": "string",

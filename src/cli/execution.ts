@@ -348,7 +348,7 @@ export async function generateWithAPI(
 
   if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY not found. Run 'Claude Commit: Set Anthropic API Key' or set the ANTHROPIC_API_KEY environment variable."
+      "ANTHROPIC_API_KEY not found. Run 'Claude Git Commit: Set Anthropic API Key' or set the ANTHROPIC_API_KEY environment variable."
     );
   }
 
@@ -385,7 +385,7 @@ export async function generateWithAPI(
       throw new GenerationCancelledError();
     }
     if (error instanceof sdk.AuthenticationError) {
-      throw new Error("Invalid API key. Run 'Claude Commit: Set Anthropic API Key' to update it.");
+      throw new Error("Invalid API key. Run 'Claude Git Commit: Set Anthropic API Key' to update it.");
     }
     if (error instanceof sdk.RateLimitError) {
       throw new Error("Rate limit exceeded. Please wait and try again.");

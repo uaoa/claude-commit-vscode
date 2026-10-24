@@ -1,97 +1,62 @@
-# Claude Commit
+<p align="center"><img src="icon.png" width="128" alt="Claude Git Commit icon"></p>
+
+# Claude Git Commit
 
 [![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![License](https://img.shields.io/github/license/uaoa/claude-commit-vscode?style=for-the-badge)](LICENSE)
 
-**Already using Claude Code? Get the commit message button you deserve – at no extra cost.**
+Claude Git Commit writes Git commit messages for you. It reads the diff of your repository, sends it to Claude through the Claude Code CLI you are signed in to (or through the Anthropic API, if you prefer), and puts the result into the Source Control input box. You review it, tweak it if needed, and commit.
 
-A VS Code extension that brings the ✨ sparkle button to your Git panel, powered by the Claude CLI you already have. Generate intelligent commit messages without paying for additional AI services.
+> Claude Git Commit is an independent, community-built extension. It is not made, endorsed or supported by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic and are used here only to describe what the extension works with.
 
-![demo](demo.png)
+## Highlights
 
-## Why Claude Commit?
-
-You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×10. Why pay for Copilot or Cursor just for commit message generation? This extension leverages your existing Claude subscription to bring the same AI-powered commit message functionality directly to VS Code.
-
-**Zero additional cost. Zero complexity. Just works.**
-
-## Features
-
-- **One-click commit message generation**: The sparkle button ✨ you know and love, right in VS Code's Source Control panel
-- **Powered by your Claude CLI**: Uses your existing Claude installation – no extra API keys or subscriptions needed
-- **Context-aware analysis**: Understands your git diff to generate meaningful commit messages
-- **Flexible commit styles**: Choose from conventional commits, prefix-only, simple descriptions, or create your own custom template
-- **Custom prompt templates**: Full control over AI prompts with `{diff}` and `{stats}` template variables
-- **Edit with feedback**: Not satisfied? Click "Edit with feedback" to refine the message with AI assistance
-- **Multi-line commit support**: Generate detailed commits with body and footer for complex changes
-- **Model selection**: Choose between Haiku (fast), Sonnet (balanced), or Opus (most capable)
-- **Multilingual support**: Works in English, Korean, Ukrainian, and Chinese
-- **Flexible backend**: Automatically uses Claude CLI, with API fallback option
-- **Smart runtime detection**: Finds Claude CLI from your PATH at runtime without modifying settings (perfect for WSL)
-- **Custom BASE_URI support**: Works with custom Claude API endpoints via environment variables
-- **In-memory caching**: Remembers the detected CLI path during your session for performance
-- **Multi-repository support**: Intelligently detects and works with multiple Git repositories in workspace
-- **Comprehensive logging**: Detailed debug logs in Output panel for troubleshooting
-- **Privacy mode**: Optional restricted file permissions for temporary prompt files (Linux/macOS)
-- **Auto-close notifications**: Configurable auto-dismiss for success messages
-- **Progress indicators**: See exactly what's happening during generation
-- **Seamless VS Code integration**: Works directly with the built-in Git interface
+- **Generate from the Source Control title bar.** One click on the `$(sparkle)` action, or run **Claude Git Commit: Generate Commit Message** from the Command Palette.
+- **CLI first, API as a fallback.** Uses the local Claude Code CLI when it is available, so no separate API key is needed. Switch to the Anthropic API with `claudeCommit.preferredMethod`.
+- **Finds the CLI on its own.** Looks in PATH, in the binary shipped with the Claude Code VS Code extension, in your shell profile and in common install folders. The order is configurable, and it works in WSL, Remote-SSH and dev containers.
+- **Your commit style.** Conventional Commits with or without scope, plain descriptions, or your own prompt template with `{diff}` and `{stats}` placeholders. Single-line or multi-line with body and footer, imperative or past tense.
+- **Refine with feedback.** Not happy with the result? Choose **Edit with feedback**, describe what to change, and get a new version in the same format.
+- **Four languages.** English, Korean, Ukrainian and Chinese commit messages.
+- **Model choice.** Haiku, Sonnet or Opus, or any exact model ID via `claudeCommit.customModel`.
+- **Several repositories at once.** Picks the repository you clicked in, or the one that contains the active editor.
+- **Safe key storage.** The API key is kept in the OS secret storage, not in `settings.json`.
+- **Cancellable and transparent.** Stop a run from the progress notification; every step is logged to the **Claude Git Commit** output channel.
 
 ## Requirements
 
-- VS Code 1.75.0 or higher
-- Claude CLI installed and authenticated (comes with your Claude Code subscription)
-- Git repository initialized in your workspace
-- Internet connection for AI generation
+- VS Code 1.75 or newer
+- A Git repository open in the workspace
+- One of:
+  - the Claude Code CLI, installed and signed in, or
+  - an Anthropic API key
 
-### WSL Compatibility
+### WSL
 
-This extension works seamlessly in Windows Subsystem for Linux (WSL) environments. The extension automatically detects the Claude CLI from the system's PATH at runtime without modifying your settings, ensuring compatibility across both Windows and WSL environments:
+Leave `claudeCommit.cliPath` empty and the CLI is resolved at runtime on each side: `claude.exe` from the Windows PATH, `claude` from the Linux PATH. Your settings are never rewritten, so the same configuration works in both environments.
 
-- **On Windows**: The extension finds `claude.exe` from the Windows PATH
-- **In WSL**: The extension finds `claude` from the Linux PATH
-- **No conflicts**: Leaving `claudeCommit.cliPath` empty allows automatic detection in both environments
-- **Environment variables**: Login shell support ensures environment variables from `.bashrc`, `.profile`, etc. are properly loaded
+### Custom API endpoints
 
-### Custom API Endpoint Support
+Environment variables such as `BASE_URI` or `ANTHROPIC_API_KEY` from your shell profile are picked up, because the CLI is started through a login shell (`-l`). Enterprise or proxy endpoints therefore work without extra settings.
 
-The extension supports custom Claude API endpoints through environment variables:
+## Getting started
 
-- **Custom BASE_URI**: Set environment variables for custom API endpoints (e.g., for enterprise deployments)
-- **Login shell**: CLI commands are executed with login shell (`-l` flag) to properly load environment variables
-- **Full compatibility**: Works with standard Claude API and custom endpoints without configuration changes
+1. Install **Claude Git Commit** from the VS Code Marketplace.
+2. Make sure `claude --version` works in your terminal, or run **Claude Git Commit: Set Anthropic API Key**.
+3. Open a folder with a Git repository and change some files. Staging is optional.
+4. In the Source Control view, click the `$(sparkle)` action in the title bar.
+5. Check the generated message in the input box and commit.
 
-## Installation
-
-1. Install the extension from the VS Code Marketplace
-2. Ensure Claude CLI is installed (comes with your Claude Code subscription)
-3. Open a project with a Git repository
-4. Look for the sparkle ✨ button in your Source Control panel
-5. On first use, if CLI is not auto-detected, you'll be prompted to configure the path
-
-**That's it!** The extension will automatically find Claude CLI or guide you through one-time setup.
-
-## How to Use
-
-1. Make your code changes
-2. Stage your changes (optional – works with unstaged changes too)
-3. Click the sparkle ✨ button in the Source Control panel
-4. Review the AI-generated commit message
-5. Commit
-
-Generation can be stopped at any time with the **Cancel** button on the progress notification.
-
-**No configuration, no setup wizards, no complexity.**
+If the CLI cannot be found on the first run, the extension asks you to browse for it, type the path, or continue with the API. A running generation can be stopped with **Cancel** on the progress notification.
 
 ## Extension Settings
 
-This extension keeps it simple with optional settings:
+All settings are optional:
 
 * `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
 * `claudeCommit.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
-* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Claude Commit: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
+* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Claude Git Commit: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
 * `claudeCommit.customModel`: Exact model ID or CLI alias that overrides `claudeCommit.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
@@ -141,13 +106,13 @@ Sources you omit are still tried last as a fallback, so detection never breaks. 
 ### Manual CLI path (for NVM users or custom installations)
 ```json
 {
-    "claudeCommit.cliPath": "/Users/you/.nvm/versions/node/v22.13.0/bin/claude",
+    "claudeCommit.cliPath": "/home/dev/.nvm/versions/node/v20.18.1/bin/claude",
     "claudeCommit.preferredMethod": "cli"
 }
 ```
 
 ### Using Anthropic API as fallback
-Run **Claude Commit: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
+Run **Claude Git Commit: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
 ```json
 {
     "claudeCommit.preferredMethod": "auto"
@@ -295,7 +260,7 @@ The extension intelligently handles workspaces with multiple Git repositories:
 
 ### Claude CLI not found
 
-The extension uses intelligent auto-detection to find Claude CLI **at runtime** without modifying your settings. If it's not found automatically:
+Claude Git Commit uses auto-detection to find Claude CLI **at runtime** without modifying your settings. If it's not found automatically:
 
 1. **On first use**: The extension will prompt you to configure the path:
    - **Browse for CLI**: Opens a file picker to locate the executable
@@ -306,7 +271,7 @@ The extension uses intelligent auto-detection to find Claude CLI **at runtime** 
    ```bash
    which claude
    ```
-   This shows the path (e.g., `/Users/you/.nvm/versions/node/v22.13.0/bin/claude`)
+   This shows the path (e.g., `/home/dev/.nvm/versions/node/v20.18.1/bin/claude`)
 
 3. **Configure the path in settings** (only if needed):
    - Open VS Code Settings (Cmd+, or Ctrl+,)
@@ -343,25 +308,25 @@ The extension uses intelligent auto-detection to find Claude CLI **at runtime** 
 2. Check that Claude CLI is properly authenticated
 3. Try using API method as fallback:
    - Get API key from https://console.anthropic.com/
-   - Run **Claude Commit: Set Anthropic API Key**
+   - Run **Claude Git Commit: Set Anthropic API Key**
    - Set `claudeCommit.preferredMethod` to `api`
 
 ### Extension not working
 
 1. Check you're in a Git repository
-2. **Open Output panel** (View → Output) and select **"Claude Commit"** from the dropdown
+2. **Open Output panel** (View → Output) and select **"Claude Git Commit"** from the dropdown
 3. Look for detailed log messages showing:
    - Where the extension is searching for Claude CLI
    - What command is being executed
    - What output (if any) is received from Claude
 4. Try generating a commit message manually via Command Palette:
    - Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
-   - Type "Claude Commit: Generate"
+   - Type "Claude Git Commit: Generate"
 5. If CLI path is incorrect, clear `claudeCommit.cliPath` in settings to trigger re-detection
 
 ### "Empty response from CLI" error
 
-This error means Claude CLI was found but didn't return any output. **Check the Output panel** (select "Claude Commit") for details:
+This error means Claude CLI was found but didn't return any output. **Check the Output panel** (select "Claude Git Commit") for details:
 
 1. **CLI Path**: Verify the detected path is correct
    - Look for "Found Claude CLI at: ..." in the logs
@@ -407,12 +372,12 @@ The extension uses a login shell (`-l` flag) to ensure these environment variabl
 
 ## Privacy & Security
 
-- Your code changes are processed through Claude CLI or Anthropic API
-- No data is stored or transmitted by this extension beyond what Claude requires
-- Authentication is handled by your existing Claude CLI setup or API key
-- The API key set via **Claude Commit: Set Anthropic API Key** is kept in the OS secret storage, never in settings files
+- The extension has no backend of its own: the diff goes only to Claude, through the CLI or the Anthropic API you configured
+- Nothing is collected, stored or sent anywhere else, and there is no telemetry
+- Sign-in is whatever your Claude Code CLI or API key already uses
+- The API key set via **Claude Git Commit: Set Anthropic API Key** is kept in the OS secret storage, never in settings files
 - The Claude CLI runs in a neutral temporary directory, so project files such as `CLAUDE.md` are not read
-- Code is only sent to Claude's servers through your authenticated session
+- The prompt reaches the CLI through stdin and is never written to disk
 
 ## Examples
 
@@ -427,7 +392,7 @@ docs(readme): updated installation instructions
 
 ## Contributing
 
-Found a bug or have a feature request? Please open an issue on our [GitHub repository](https://github.com/uaoa/claude-commit-vscode).
+Bug reports, ideas and pull requests are welcome in the [issue tracker](https://github.com/uaoa/claude-commit-vscode/issues).
 
 ## Author
 
@@ -447,8 +412,5 @@ Other projects:
 
 ## License
 
-MIT License - see LICENSE file for details.
+Released under the [MIT License](LICENSE).
 
----
-
-**Stop paying twice for AI commit messages. You've got Claude Code – now get the commit button. ✨**

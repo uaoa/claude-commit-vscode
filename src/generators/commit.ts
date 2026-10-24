@@ -156,7 +156,7 @@ export async function generateCommitMessage(
       const err = error as Error;
       if (cliNotFound && err.message.includes("ANTHROPIC_API_KEY")) {
         throw new Error(
-          "Claude CLI not found and no API key configured. Either configure CLI path in settings or run 'Claude Commit: Set Anthropic API Key'."
+          "Claude CLI not found and no API key configured. Either configure CLI path in settings or run 'Claude Git Commit: Set Anthropic API Key'."
         );
       }
       throw withPrefix("API error", error);
