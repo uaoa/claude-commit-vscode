@@ -4,7 +4,7 @@
 
 ## Про проект
 
-VS Code розширення **Commit Pen** (раніше «Claude Git Commit»; ID `ZakhariiMelnyk.claude-git-commit` не змінювати) — генерує повідомлення комітів через Claude AI (CLI або API). Публікується в VS Code Marketplace під publisher `ZakhariiMelnyk`.
+VS Code розширення **Commit Pen** (ID `ZakhariiMelnyk.commit-pen`; до 1.1.5 — `ZakhariiMelnyk.claude-git-commit`, заблоковане Marketplace) — генерує повідомлення комітів через Claude AI (CLI або API). Публікується в VS Code Marketplace під publisher `ZakhariiMelnyk`.
 
 - Точка входу: [src/extension.ts](src/extension.ts)
 - Білд: webpack → [dist/extension.js](dist/extension.js)
@@ -85,11 +85,12 @@ npm run package              # webpack production build
 npx vsce package             # створити .vsix
 ```
 
-Результат — `claude-git-commit-X.Y.Z.vsix` в корені. `.vsix` файли **закомічені в репозиторій** (історичні релізи) — нові додавати тільки якщо випускаєш вручну без CI.
+Результат — `commit-pen-X.Y.Z.vsix` (історичні — `claude-git-commit-X.Y.Z.vsix`) в корені. `.vsix` файли **закомічені в репозиторій** (історичні релізи) — нові додавати тільки якщо випускаєш вручну без CI.
 
 ## Файли, яких НЕ чіпати без потреби
 - `icon.png`, назва та README — лістинг блокували за схожість з `juanlb.claude-commit` (помаранчева зірочка і назва «Claude … Commit»). Не повертати помаранчеву зірочку і назву, що починається з «Claude», не копіювати тексти чи скриншоти інших розширень
-- `name`, ID команд `claude-commit.*` і ключі `claudeCommit.*` — зміна зламає оновлення та налаштування існуючих користувачів
+- `name` (`commit-pen`) — це ID розширення, зміна створює нове розширення в Marketplace
+- ID команд `claude-commit.*` і ключі `claudeCommit.*` — залишені, щоб налаштування користувачів старого `claude-git-commit` підхоплювались без змін
 - `package.json` поле `version` — керується релізним процесом
 - `.vscodeignore` — впливає на розмір пакета, перевіряти тест-пакуванням після змін
 - Історичні `.vsix` в корені — не видаляти без прохання користувача

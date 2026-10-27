@@ -2,14 +2,14 @@
 
 # Commit Pen
 
-[![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
-[![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
+[![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
+[![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
 [![License](https://img.shields.io/github/license/uaoa/claude-commit-vscode?style=for-the-badge)](LICENSE)
 
 Commit Pen writes Git commit messages for you. It reads the diff of your repository, sends it to Claude through the Claude Code CLI you are signed in to (or through the Anthropic API, if you prefer), and puts the result into the Source Control input box. You review it, tweak it if needed, and commit.
 
-Formerly published as **Claude Git Commit**: same extension, same settings, updates continue automatically.
+Formerly published as **Claude Git Commit** (`ZakhariiMelnyk.claude-git-commit`). Your `claudeCommit.*` settings carry over as they are; after installing Commit Pen, uninstall the old extension and, if you use the API, run **Commit Pen: Set Anthropic API Key** once again.
 
 > Commit Pen is an independent, community-built extension. It is not made, endorsed or supported by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic and are used here only to describe what the extension works with.
 
