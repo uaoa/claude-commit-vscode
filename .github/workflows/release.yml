@@ -110,7 +110,7 @@ jobs:
           done <<< "$LOG"
 
           {
-            echo "## Claude Git Commit v${{ steps.version.outputs.version }}"
+            echo "## Commit Pen v${{ steps.version.outputs.version }}"
             echo ""
             [ -n "$FEATURES" ] && { echo "### ✨ Features"; echo ""; echo "$FEATURES"; }
             [ -n "$FIXES" ]    && { echo "### 🐛 Bug Fixes"; echo ""; echo "$FIXES"; }
