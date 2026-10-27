@@ -31,11 +31,11 @@ jobs:
         run: npm test
 
       - name: Package VSIX (dry run)
-        run: npx vsce package --no-dependencies -o claude-git-commit-ci.vsix
+        run: npx vsce package --no-dependencies -o commit-pen-ci.vsix
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
           name: vsix-${{ github.sha }}
-          path: claude-git-commit-ci.vsix
+          path: commit-pen-ci.vsix
           retention-days: 7

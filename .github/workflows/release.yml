@@ -66,7 +66,7 @@ jobs:
         run: npm test
 
       - name: Package VSIX
-        run: npx vsce package --no-dependencies -o "claude-git-commit-${{ steps.version.outputs.version }}.vsix"
+        run: npx vsce package --no-dependencies -o "commit-pen-${{ steps.version.outputs.version }}.vsix"
 
       - name: Generate release notes
         id: notes
@@ -124,7 +124,7 @@ jobs:
             echo ""
             echo "Download the \`.vsix\` file below and install via:"
             echo '```'
-            echo "code --install-extension claude-git-commit-${{ steps.version.outputs.version }}.vsix"
+            echo "code --install-extension commit-pen-${{ steps.version.outputs.version }}.vsix"
             echo '```'
             if [ -n "$PREV_TAG" ]; then
               echo ""
@@ -141,7 +141,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.tag }}
           body_path: RELEASE_NOTES.md
-          files: claude-git-commit-${{ steps.version.outputs.version }}.vsix
+          files: commit-pen-${{ steps.version.outputs.version }}.vsix
           draft: false
           prerelease: false
 
@@ -154,4 +154,4 @@ jobs:
             echo "::warning::VSCE_PAT secret is not set — skipping marketplace publish"
             exit 0
           fi
-          npx vsce publish --no-dependencies --packagePath "claude-git-commit-${{ steps.version.outputs.version }}.vsix"
+          npx vsce publish --no-dependencies --packagePath "commit-pen-${{ steps.version.outputs.version }}.vsix"
