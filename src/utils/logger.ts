@@ -4,7 +4,7 @@ let outputChannel: vscode.OutputChannel | undefined;
 
 export function getOutputChannel(): vscode.OutputChannel {
   if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("Claude Git Commit");
+    outputChannel = vscode.window.createOutputChannel("Commit Pen");
   }
   return outputChannel;
 }

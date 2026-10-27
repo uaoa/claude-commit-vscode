@@ -79,7 +79,7 @@ export async function suggestApiKeyMigration(context: vscode.ExtensionContext): 
   await context.globalState.update(MIGRATION_PROMPTED_KEY, true);
 
   const action = await vscode.window.showInformationMessage(
-    "Claude Git Commit: your Anthropic API key is stored in plain text in settings.json. Move it to secure storage?",
+    "Commit Pen: your Anthropic API key is stored in plain text in settings.json. Move it to secure storage?",
     "Move to Secure Storage",
     "Keep in Settings"
   );
@@ -91,7 +91,7 @@ export async function suggestApiKeyMigration(context: vscode.ExtensionContext): 
     await secrets.store(SECRET_KEY, settingKey);
     await config.update("apiKey", undefined, vscode.ConfigurationTarget.Global);
     vscode.window.showInformationMessage(
-      "API key moved to secure storage. Secure storage is not synced — run 'Claude Git Commit: Set Anthropic API Key' on your other machines."
+      "API key moved to secure storage. Secure storage is not synced — run 'Commit Pen: Set Anthropic API Key' on your other machines."
     );
   } catch (error) {
     vscode.window.showErrorMessage(

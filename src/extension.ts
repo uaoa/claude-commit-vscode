@@ -117,7 +117,7 @@ function getActiveRepository(git: GitAPI, sourceControl?: vscode.SourceControl):
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  log("Claude Git Commit extension activated");
+  log("Commit Pen extension activated");
   initApiKeyStorage(context);
 
   const generateCommit = vscode.commands.registerCommand(
@@ -164,7 +164,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: "Claude Git Commit",
+            title: "Commit Pen",
             cancellable: true,
           },
           async (progress, token) => {
@@ -309,7 +309,7 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
   const newMessage = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Claude Git Commit",
+      title: "Commit Pen",
       cancellable: true,
     },
     async (progress, token) => {
@@ -365,7 +365,7 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
   const newMessage = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Claude Git Commit",
+      title: "Commit Pen",
       cancellable: true,
     },
     async (progress, token) => {

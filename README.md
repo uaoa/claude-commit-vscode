@@ -1,19 +1,21 @@
-<p align="center"><img src="icon.png" width="128" alt="Claude Git Commit icon"></p>
+<p align="center"><img src="icon.png" width="128" alt="Commit Pen icon"></p>
 
-# Claude Git Commit
+# Commit Pen
 
 [![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.claude-git-commit?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.claude-git-commit)
 [![License](https://img.shields.io/github/license/uaoa/claude-commit-vscode?style=for-the-badge)](LICENSE)
 
-Claude Git Commit writes Git commit messages for you. It reads the diff of your repository, sends it to Claude through the Claude Code CLI you are signed in to (or through the Anthropic API, if you prefer), and puts the result into the Source Control input box. You review it, tweak it if needed, and commit.
+Commit Pen writes Git commit messages for you. It reads the diff of your repository, sends it to Claude through the Claude Code CLI you are signed in to (or through the Anthropic API, if you prefer), and puts the result into the Source Control input box. You review it, tweak it if needed, and commit.
 
-> Claude Git Commit is an independent, community-built extension. It is not made, endorsed or supported by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic and are used here only to describe what the extension works with.
+Formerly published as **Claude Git Commit**: same extension, same settings, updates continue automatically.
+
+> Commit Pen is an independent, community-built extension. It is not made, endorsed or supported by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic and are used here only to describe what the extension works with.
 
 ## Highlights
 
-- **Generate from the Source Control title bar.** One click on the `$(sparkle)` action, or run **Claude Git Commit: Generate Commit Message** from the Command Palette.
+- **Generate from the Source Control title bar.** One click on the `$(sparkle)` action, or run **Commit Pen: Generate Commit Message** from the Command Palette.
 - **CLI first, API as a fallback.** Uses the local Claude Code CLI when it is available, so no separate API key is needed. Switch to the Anthropic API with `claudeCommit.preferredMethod`.
 - **Finds the CLI on its own.** Looks in PATH, in the binary shipped with the Claude Code VS Code extension, in your shell profile and in common install folders. The order is configurable, and it works in WSL, Remote-SSH and dev containers.
 - **Your commit style.** Conventional Commits with or without scope, plain descriptions, or your own prompt template with `{diff}` and `{stats}` placeholders. Single-line or multi-line with body and footer, imperative or past tense.
@@ -22,7 +24,7 @@ Claude Git Commit writes Git commit messages for you. It reads the diff of your 
 - **Model choice.** Haiku, Sonnet or Opus, or any exact model ID via `claudeCommit.customModel`.
 - **Several repositories at once.** Picks the repository you clicked in, or the one that contains the active editor.
 - **Safe key storage.** The API key is kept in the OS secret storage, not in `settings.json`.
-- **Cancellable and transparent.** Stop a run from the progress notification; every step is logged to the **Claude Git Commit** output channel.
+- **Cancellable and transparent.** Stop a run from the progress notification; every step is logged to the **Commit Pen** output channel.
 
 ## Requirements
 
@@ -42,8 +44,8 @@ Environment variables such as `BASE_URI` or `ANTHROPIC_API_KEY` from your shell 
 
 ## Getting started
 
-1. Install **Claude Git Commit** from the VS Code Marketplace.
-2. Make sure `claude --version` works in your terminal, or run **Claude Git Commit: Set Anthropic API Key**.
+1. Install **Commit Pen** from the VS Code Marketplace.
+2. Make sure `claude --version` works in your terminal, or run **Commit Pen: Set Anthropic API Key**.
 3. Open a folder with a Git repository and change some files. Staging is optional.
 4. In the Source Control view, click the `$(sparkle)` action in the title bar.
 5. Check the generated message in the input box and commit.
@@ -56,7 +58,7 @@ All settings are optional:
 
 * `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
 * `claudeCommit.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
-* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Claude Git Commit: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
+* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Commit Pen: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
 * `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
 * `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
 * `claudeCommit.customModel`: Exact model ID or CLI alias that overrides `claudeCommit.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
@@ -112,7 +114,7 @@ Sources you omit are still tried last as a fallback, so detection never breaks. 
 ```
 
 ### Using Anthropic API as fallback
-Run **Claude Git Commit: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
+Run **Commit Pen: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
 ```json
 {
     "claudeCommit.preferredMethod": "auto"
@@ -260,7 +262,7 @@ The extension intelligently handles workspaces with multiple Git repositories:
 
 ### Claude CLI not found
 
-Claude Git Commit uses auto-detection to find Claude CLI **at runtime** without modifying your settings. If it's not found automatically:
+Commit Pen uses auto-detection to find Claude CLI **at runtime** without modifying your settings. If it's not found automatically:
 
 1. **On first use**: The extension will prompt you to configure the path:
    - **Browse for CLI**: Opens a file picker to locate the executable
@@ -308,25 +310,25 @@ Claude Git Commit uses auto-detection to find Claude CLI **at runtime** without 
 2. Check that Claude CLI is properly authenticated
 3. Try using API method as fallback:
    - Get API key from https://console.anthropic.com/
-   - Run **Claude Git Commit: Set Anthropic API Key**
+   - Run **Commit Pen: Set Anthropic API Key**
    - Set `claudeCommit.preferredMethod` to `api`
 
 ### Extension not working
 
 1. Check you're in a Git repository
-2. **Open Output panel** (View → Output) and select **"Claude Git Commit"** from the dropdown
+2. **Open Output panel** (View → Output) and select **"Commit Pen"** from the dropdown
 3. Look for detailed log messages showing:
    - Where the extension is searching for Claude CLI
    - What command is being executed
    - What output (if any) is received from Claude
 4. Try generating a commit message manually via Command Palette:
    - Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
-   - Type "Claude Git Commit: Generate"
+   - Type "Commit Pen: Generate"
 5. If CLI path is incorrect, clear `claudeCommit.cliPath` in settings to trigger re-detection
 
 ### "Empty response from CLI" error
 
-This error means Claude CLI was found but didn't return any output. **Check the Output panel** (select "Claude Git Commit") for details:
+This error means Claude CLI was found but didn't return any output. **Check the Output panel** (select "Commit Pen") for details:
 
 1. **CLI Path**: Verify the detected path is correct
    - Look for "Found Claude CLI at: ..." in the logs
@@ -375,7 +377,7 @@ The extension uses a login shell (`-l` flag) to ensure these environment variabl
 - The extension has no backend of its own: the diff goes only to Claude, through the CLI or the Anthropic API you configured
 - Nothing is collected, stored or sent anywhere else, and there is no telemetry
 - Sign-in is whatever your Claude Code CLI or API key already uses
-- The API key set via **Claude Git Commit: Set Anthropic API Key** is kept in the OS secret storage, never in settings files
+- The API key set via **Commit Pen: Set Anthropic API Key** is kept in the OS secret storage, never in settings files
 - The Claude CLI runs in a neutral temporary directory, so project files such as `CLAUDE.md` are not read
 - The prompt reaches the CLI through stdin and is never written to disk
 
