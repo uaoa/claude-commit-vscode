@@ -7,6 +7,7 @@ import { setGitPath } from "./utils/git";
 import { isInsideFolder } from "./utils/paths";
 import { initApiKeyStorage, setApiKeyCommand, suggestApiKeyMigration } from "./utils/apiKey";
 import { isCancellation } from "./utils/cancel";
+import { migrateLegacySettings } from "./utils/legacySettings";
 
 // Guards against a second click starting a parallel generation for the same message box
 let isGenerating = false;
@@ -23,7 +24,7 @@ function toAbortSignal(token: vscode.CancellationToken): AbortSignal {
  * Resolves with the clicked button, or undefined when the message is disabled or dismissed.
  */
 async function showSuccessMessage(message: string, ...buttons: string[]): Promise<string | undefined> {
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   if (!config.get<boolean>("showSuccessMessage", true)) {
     return undefined;
   }
@@ -119,9 +120,10 @@ function getActiveRepository(git: GitAPI, sourceControl?: vscode.SourceControl):
 export function activate(context: vscode.ExtensionContext): void {
   log("Commit Pen extension activated");
   initApiKeyStorage(context);
+  migrateLegacySettings(context).catch((error) => logError("Legacy settings migration failed", error));
 
   const generateCommit = vscode.commands.registerCommand(
-    "claude-commit.generate",
+    "commit-pen.generate",
     async (sourceControl?: vscode.SourceControl) => {
       try {
         const gitExtension = vscode.extensions.getExtension("vscode.git");
@@ -143,7 +145,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        const config = vscode.workspace.getConfiguration("claudeCommit");
+        const config = vscode.workspace.getConfiguration("commitPen");
         const claudeCodeManaged = config.get<boolean>("claudeCodeManaged", false);
         const preferredMethod = config.get<string>("preferredMethod", "auto");
 
@@ -169,7 +171,7 @@ export function activate(context: vscode.ExtensionContext): void {
           },
           async (progress, token) => {
             try {
-              const config = vscode.workspace.getConfiguration("claudeCommit");
+              const config = vscode.workspace.getConfiguration("commitPen");
               const language = config.get<Language>("language", "en");
 
               const updateProgress = (message: string): void => {
@@ -227,7 +229,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const generateCommitWithCustomPrompt = vscode.commands.registerCommand(
-    "claude-commit.generateWithCustomPrompt",
+    "commit-pen.generateWithCustomPrompt",
     async (sourceControl?: vscode.SourceControl) => {
       try {
         const gitExtension = vscode.extensions.getExtension("vscode.git");
@@ -250,7 +252,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         // This command only works in managed mode
-        const config = vscode.workspace.getConfiguration("claudeCommit");
+        const config = vscode.workspace.getConfiguration("commitPen");
         const claudeCodeManaged = config.get<boolean>("claudeCodeManaged", false);
         const preferredMethod = config.get<string>("preferredMethod", "auto");
 
@@ -271,16 +273,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Re-run detection when the user changes how the CLI should be located
   const configWatcher = vscode.workspace.onDidChangeConfiguration((event) => {
-    if (
-      event.affectsConfiguration("claudeCommit.detectionOrder") ||
-      event.affectsConfiguration("claudeCommit.cliPath")
-    ) {
+    if (event.affectsConfiguration("commitPen.detectionOrder") || event.affectsConfiguration("commitPen.cliPath")) {
       log("CLI detection settings changed, clearing cached CLI path");
       clearCliPathCache();
     }
   });
 
-  const setApiKey = vscode.commands.registerCommand("claude-commit.setApiKey", setApiKeyCommand);
+  const setApiKey = vscode.commands.registerCommand("commit-pen.setApiKey", setApiKeyCommand);
 
   context.subscriptions.push(generateCommit, generateCommitWithCustomPrompt, setApiKey, configWatcher);
 
@@ -314,7 +313,7 @@ async function handleCustomPrompt(repo: GitRepository): Promise<void> {
     },
     async (progress, token) => {
       try {
-        const config = vscode.workspace.getConfiguration("claudeCommit");
+        const config = vscode.workspace.getConfiguration("commitPen");
         const language = config.get<Language>("language", "en");
 
         const updateProgress = (message: string): void => {
@@ -370,7 +369,7 @@ async function handleEditWithFeedback(repo: GitRepository, currentMessage: strin
     },
     async (progress, token) => {
       try {
-        const config = vscode.workspace.getConfiguration("claudeCommit");
+        const config = vscode.workspace.getConfiguration("commitPen");
         const language = config.get<Language>("language", "en");
 
         const updateProgress = (message: string): void => {

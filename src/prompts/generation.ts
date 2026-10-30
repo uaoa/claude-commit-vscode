@@ -19,7 +19,7 @@ export function createGenerationPrompt(
     const template = (customTemplate ?? "").trim();
     if (!template) {
       throw new Error(
-        "Custom commit style is selected but 'claudeCommit.customPromptTemplate' is empty. " +
+        "Custom commit style is selected but 'commitPen.customPromptTemplate' is empty. " +
           "Either fill in the template (use {diff} and {stats} placeholders) or switch commitStyle to 'conventional'."
       );
     }

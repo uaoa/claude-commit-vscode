@@ -24,7 +24,7 @@ export async function generateCommitMessage(
   signal?: AbortSignal
 ): Promise<string> {
   const repoPath = repo.rootUri.fsPath;
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
 
   const preferredMethod = config.get<GenerationMethod>("preferredMethod", "auto");
 
@@ -180,7 +180,7 @@ export async function editCommitMessage(
     progressCallback("Getting git diff...");
   }
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   const diffSource = config.get<DiffSource>("diffSource", "auto");
 
   const { diff, stats } = await getDiff(repoPath, diffSource);

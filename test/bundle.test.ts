@@ -15,8 +15,12 @@ const bundlePath = path.resolve(__dirname, "..", "..", "dist", "extension.js");
 const isWindows = process.platform === "win32";
 
 let tmpDir: string;
+// biome-ignore lint: test file
+let extension: any;
 let repoDir: string;
 let config: Record<string, unknown>;
+let legacyConfig: Record<string, unknown> = {};
+let configUpdates: [string, unknown, number][] = [];
 let secretStore: Map<string, string>;
 let errors: string[];
 let infos: string[];
@@ -30,7 +34,7 @@ const repo = {
 
 const vscodeMock = {
   ProgressLocation: { Notification: 15 },
-  ConfigurationTarget: { Global: 1 },
+  ConfigurationTarget: { Global: 1, Workspace: 2 },
   commands: {
     registerCommand: (id: string, cb: AnyFn) => {
       commands[id] = cb;
@@ -80,11 +84,16 @@ const vscodeMock = {
     showOpenDialog: () => Promise.resolve(undefined),
   },
   workspace: {
-    getConfiguration: () => ({
-      get: (key: string, fallback?: unknown) => (key in config ? config[key] : fallback),
-      inspect: (key: string) => ({ globalValue: config[key] }),
-      update: async () => {},
-    }),
+    getConfiguration: (section?: string) => {
+      const values = section === "claudeCommit" ? legacyConfig : config;
+      return {
+        get: (key: string, fallback?: unknown) => (key in values ? values[key] : fallback),
+        inspect: (key: string) => ({ globalValue: values[key] }),
+        update: async (key: string, value: unknown, target: number) => {
+          configUpdates.push([key, value, target]);
+        },
+      };
+    },
     onDidChangeConfiguration: () => ({ dispose() {} }),
   },
 };
@@ -98,13 +107,13 @@ function writeFakeCli(name: string, body: string): string {
 
 async function generate(): Promise<void> {
   repo.inputBox.value = "";
-  await commands["claude-commit.generate"]();
+  await commands["commit-pen.generate"]();
 }
 
 before(() => {
   assert.ok(fs.existsSync(bundlePath), `Bundle not found at ${bundlePath} — run "npm run package" first`);
 
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "claude-commit-test-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "commit-pen-test-"));
   repoDir = path.join(tmpDir, "repo");
   fs.mkdirSync(repoDir);
   const git = (...args: string[]) => execFileSync("git", args, { cwd: repoDir, stdio: "pipe" });
@@ -120,7 +129,7 @@ before(() => {
   Module._load = function (request: string, ...rest: unknown[]) {
     return request === "vscode" ? vscodeMock : originalLoad.call(this, request, ...rest);
   };
-  const extension = require(bundlePath);
+  extension = require(bundlePath);
   secretStore = new Map();
   config = {};
   errors = [];
@@ -149,7 +158,7 @@ beforeEach(() => {
 });
 
 test("activation registers all commands", () => {
-  for (const id of ["claude-commit.generate", "claude-commit.generateWithCustomPrompt", "claude-commit.setApiKey"]) {
+  for (const id of ["commit-pen.generate", "commit-pen.generateWithCustomPrompt", "commit-pen.setApiKey"]) {
     assert.equal(typeof commands[id], "function", id);
   }
 });
@@ -179,7 +188,7 @@ test("API mode works from the bundle (SDK is bundled) with current request shape
     globalThis.fetch = realFetch;
   });
 
-  secretStore.set("claudeCommit.apiKey", "sk-ant-from-secret-storage");
+  secretStore.set("commitPen.apiKey", "sk-ant-from-secret-storage");
   config = { preferredMethod: "api", model: "sonnet" };
   await generate();
   assert.deepEqual(errors, []);
@@ -263,4 +272,28 @@ test("success message respects showSuccessMessage", { skip: isWindows }, async (
   await generate();
   assert.equal(repo.inputBox.value, "feat: quick");
   assert.deepEqual(infos, []);
+});
+
+test("settings from claudeCommit.* are copied to commitPen.* once, without overwriting", async () => {
+  legacyConfig = { model: "opus", language: "ua" };
+  config = { language: "en" };
+  configUpdates = [];
+  const state = new Map<string, unknown>();
+  extension.activate({
+    subscriptions: [],
+    secrets: { get: async () => undefined, store: async () => {}, delete: async () => {} },
+    globalState: { get: (key: string) => state.get(key), update: async (key: string, v: unknown) => void state.set(key, v) },
+    workspaceState: { get: () => true, update: async () => {} },
+    extension: {
+      packageJSON: {
+        contributes: {
+          configuration: { properties: { "commitPen.model": {}, "commitPen.language": {}, "commitPen.cliPath": {} } },
+        },
+      },
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(configUpdates, [["model", "opus", 1]]);
+  assert.equal(state.get("commitPen.legacySettingsMigrated"), true);
+  legacyConfig = {};
 });

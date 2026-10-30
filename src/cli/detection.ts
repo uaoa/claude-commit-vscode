@@ -300,7 +300,7 @@ const DETECTORS: Record<DetectionSource, () => Promise<string | null>> = {
 
 export async function findClaudeCliPath(): Promise<string | null> {
   // 1. Check user settings
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   const userPath = config.get<string>("cliPath");
 
   if (userPath?.trim()) {
@@ -394,7 +394,7 @@ export async function promptForCliPath(): Promise<string | null> {
 }
 
 export async function saveCliPath(cliPath: string): Promise<void> {
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   await config.update("cliPath", cliPath, vscode.ConfigurationTarget.Global);
   cachedCliPath = cliPath;
   vscode.window.showInformationMessage(`Claude CLI path saved: ${cliPath}`);

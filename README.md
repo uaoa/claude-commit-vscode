@@ -5,23 +5,23 @@
 [![Install](https://img.shields.io/visual-studio-marketplace/i/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode&label=Installs)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/ZakhariiMelnyk.commit-pen?style=for-the-badge&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=ZakhariiMelnyk.commit-pen)
-[![License](https://img.shields.io/github/license/uaoa/claude-commit-vscode?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/github/license/uaoa/commit-pen?style=for-the-badge)](LICENSE)
 
 Commit Pen writes Git commit messages for you. It reads the diff of your repository, sends it to Claude through the Claude Code CLI you are signed in to (or through the Anthropic API, if you prefer), and puts the result into the Source Control input box. You review it, tweak it if needed, and commit.
 
-Formerly published as **Claude Git Commit** (`ZakhariiMelnyk.claude-git-commit`). Your `claudeCommit.*` settings carry over as they are; after installing Commit Pen, uninstall the old extension and, if you use the API, run **Commit Pen: Set Anthropic API Key** once again.
+Upgrading from an earlier version? Your previous settings are copied to the new `commitPen.*` keys automatically on first start. If you use the API, run **Commit Pen: Set Anthropic API Key** once again.
 
 > Commit Pen is an independent, community-built extension. It is not made, endorsed or supported by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic and are used here only to describe what the extension works with.
 
 ## Highlights
 
 - **Generate from the Source Control title bar.** One click on the `$(sparkle)` action, or run **Commit Pen: Generate Commit Message** from the Command Palette.
-- **CLI first, API as a fallback.** Uses the local Claude Code CLI when it is available, so no separate API key is needed. Switch to the Anthropic API with `claudeCommit.preferredMethod`.
+- **CLI first, API as a fallback.** Uses the local Claude Code CLI when it is available, so no separate API key is needed. Switch to the Anthropic API with `commitPen.preferredMethod`.
 - **Finds the CLI on its own.** Looks in PATH, in the binary shipped with the Claude Code VS Code extension, in your shell profile and in common install folders. The order is configurable, and it works in WSL, Remote-SSH and dev containers.
 - **Your commit style.** Conventional Commits with or without scope, plain descriptions, or your own prompt template with `{diff}` and `{stats}` placeholders. Single-line or multi-line with body and footer, imperative or past tense.
 - **Refine with feedback.** Not happy with the result? Choose **Edit with feedback**, describe what to change, and get a new version in the same format.
 - **Four languages.** English, Korean, Ukrainian and Chinese commit messages.
-- **Model choice.** Haiku, Sonnet or Opus, or any exact model ID via `claudeCommit.customModel`.
+- **Model choice.** Haiku, Sonnet or Opus, or any exact model ID via `commitPen.customModel`.
 - **Several repositories at once.** Picks the repository you clicked in, or the one that contains the active editor.
 - **Safe key storage.** The API key is kept in the OS secret storage, not in `settings.json`.
 - **Cancellable and transparent.** Stop a run from the progress notification; every step is logged to the **Commit Pen** output channel.
@@ -36,7 +36,7 @@ Formerly published as **Claude Git Commit** (`ZakhariiMelnyk.claude-git-commit`)
 
 ### WSL
 
-Leave `claudeCommit.cliPath` empty and the CLI is resolved at runtime on each side: `claude.exe` from the Windows PATH, `claude` from the Linux PATH. Your settings are never rewritten, so the same configuration works in both environments.
+Leave `commitPen.cliPath` empty and the CLI is resolved at runtime on each side: `claude.exe` from the Windows PATH, `claude` from the Linux PATH. Your settings are never rewritten, so the same configuration works in both environments.
 
 ### Custom API endpoints
 
@@ -56,29 +56,29 @@ If the CLI cannot be found on the first run, the extension asks you to browse fo
 
 All settings are optional:
 
-* `claudeCommit.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
-* `claudeCommit.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
-* `claudeCommit.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Commit Pen: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
-* `claudeCommit.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
-* `claudeCommit.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
-* `claudeCommit.customModel`: Exact model ID or CLI alias that overrides `claudeCommit.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
-* `claudeCommit.language`: Commit message language (`en` for English, `ko` for Korean, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
-* `claudeCommit.multiLineCommit`: Generate detailed multi-line commits with body and footer – defaults to `false`
-* `claudeCommit.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
-* `claudeCommit.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
-* `claudeCommit.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
-* `claudeCommit.messageAutoCloseSeconds`: Seconds before the success message is hidden into the Notification Center (0 to keep it on screen) – defaults to `5`
-* `claudeCommit.showSuccessMessage`: Show a notification after the commit message is generated – defaults to `true`
-* `claudeCommit.privacyMode`: *Deprecated, no effect* – since 1.0.20 the prompt is passed via stdin and never written to disk
-* `claudeCommit.commitStyle`: Commit message style format (`conventional`, `prefix`, `default`, or `custom`) – defaults to `conventional`
-* `claudeCommit.customPromptTemplate`: Custom prompt template with `{diff}` and `{stats}` variables (only used when commitStyle is `custom`) – defaults to empty
+* `commitPen.cliPath`: Path to Claude CLI executable (leave empty for auto-detection)
+* `commitPen.detectionOrder`: Order of the auto-detection sources (`path`, `vscodeExtension`, `shellProfile`, `commonPaths`) – first hit wins, defaults to `["path", "vscodeExtension", "shellProfile", "commonPaths"]`
+* `commitPen.apiKey`: Your Anthropic API key (only needed if using API method). Prefer the command **Commit Pen: Set Anthropic API Key**, which stores the key in the OS secret storage instead of plain-text settings
+* `commitPen.preferredMethod`: Choose AI backend (`auto`, `cli`, or `api`) – defaults to `auto`
+* `commitPen.model`: Claude model to use (`haiku`, `sonnet`, `opus`) – defaults to `haiku`
+* `commitPen.customModel`: Exact model ID or CLI alias that overrides `commitPen.model` (e.g. `claude-opus-5-5`, `sonnet[1m]`) – defaults to empty
+* `commitPen.language`: Commit message language (`en` for English, `ko` for Korean, `ua` for Ukrainian, `zh` for Chinese) – defaults to `en`
+* `commitPen.multiLineCommit`: Generate detailed multi-line commits with body and footer – defaults to `false`
+* `commitPen.diffSource`: Which changes to use (`staged`, `all`, or `auto`) – defaults to `auto`
+* `commitPen.claudeCodeManaged`: Let Claude Code generate commit messages with minimal intervention (only works with CLI method) – defaults to `false`
+* `commitPen.keepCoAuthoredBy`: Keep Co-Authored-By signature in commit message (only works in Claude Code managed mode) – defaults to `false`
+* `commitPen.messageAutoCloseSeconds`: Seconds before the success message is hidden into the Notification Center (0 to keep it on screen) – defaults to `5`
+* `commitPen.showSuccessMessage`: Show a notification after the commit message is generated – defaults to `true`
+* `commitPen.privacyMode`: *Deprecated, no effect* – since 1.0.20 the prompt is passed via stdin and never written to disk
+* `commitPen.commitStyle`: Commit message style format (`conventional`, `prefix`, `default`, or `custom`) – defaults to `conventional`
+* `commitPen.customPromptTemplate`: Custom prompt template with `{diff}` and `{stats}` variables (only used when commitStyle is `custom`) – defaults to empty
 
 ## Configuration Examples
 
 ### Auto-detection (recommended)
 ```json
 {
-    "claudeCommit.preferredMethod": "auto"
+    "commitPen.preferredMethod": "auto"
 }
 ```
 The extension will automatically search for Claude CLI in common locations, including the binary bundled with the official **Claude Code VS Code extension** (`anthropic.claude-code`), e.g. `~/.vscode-server/extensions/anthropic.claude-code-<version>/resources/native-binary/claude`. This works both locally and in remote sessions (Remote-SSH, WSL, dev containers).
@@ -86,7 +86,7 @@ The extension will automatically search for Claude CLI in common locations, incl
 ### Custom detection order
 ```json
 {
-    "claudeCommit.detectionOrder": [
+    "commitPen.detectionOrder": [
         "vscodeExtension",
         "path",
         "commonPaths",
@@ -103,13 +103,13 @@ Sources are tried top to bottom and the first hit wins:
 | `shellProfile` | PATH after sourcing `~/.zshrc` / `~/.bashrc` (macOS/Linux) |
 | `commonPaths` | npm global, `~/.local/bin`, Homebrew, nvm, … |
 
-Sources you omit are still tried last as a fallback, so detection never breaks. Setting `claudeCommit.cliPath` bypasses detection entirely.
+Sources you omit are still tried last as a fallback, so detection never breaks. Setting `commitPen.cliPath` bypasses detection entirely.
 
 ### Manual CLI path (for NVM users or custom installations)
 ```json
 {
-    "claudeCommit.cliPath": "/home/dev/.nvm/versions/node/v20.18.1/bin/claude",
-    "claudeCommit.preferredMethod": "cli"
+    "commitPen.cliPath": "/home/dev/.nvm/versions/node/v20.18.1/bin/claude",
+    "commitPen.preferredMethod": "cli"
 }
 ```
 
@@ -117,36 +117,36 @@ Sources you omit are still tried last as a fallback, so detection never breaks. 
 Run **Commit Pen: Set Anthropic API Key** from the Command Palette — the key is kept in the OS secret storage (Keychain / Credential Manager / libsecret), not in `settings.json`. Then:
 ```json
 {
-    "claudeCommit.preferredMethod": "auto"
+    "commitPen.preferredMethod": "auto"
 }
 ```
-The key is looked up in this order: secret storage → `claudeCommit.apiKey` setting → `ANTHROPIC_API_KEY` environment variable. Secret storage is not covered by Settings Sync, so set the key once per machine.
+The key is looked up in this order: secret storage → `commitPen.apiKey` setting → `ANTHROPIC_API_KEY` environment variable. Secret storage is not covered by Settings Sync, so set the key once per machine.
 
 ### Korean interface
 ```json
 {
-    "claudeCommit.language": "ko"
+    "commitPen.language": "ko"
 }
 ```
 
 ### Ukrainian interface
 ```json
 {
-    "claudeCommit.language": "ua"
+    "commitPen.language": "ua"
 }
 ```
 
 ### Chinese interface
 ```json
 {
-    "claudeCommit.language": "zh"
+    "commitPen.language": "zh"
 }
 ```
 
 ### Detailed multi-line commits
 ```json
 {
-    "claudeCommit.multiLineCommit": true
+    "commitPen.multiLineCommit": true
 }
 ```
 This generates commits with subject, body, and footer following the full conventional commits format.
@@ -154,7 +154,7 @@ This generates commits with subject, body, and footer following the full convent
 ### Using a specific model
 ```json
 {
-    "claudeCommit.model": "sonnet"
+    "commitPen.model": "sonnet"
 }
 ```
 Available models: `haiku` (fast, default), `sonnet` (balanced), `opus` (most capable). With the CLI these are aliases for the latest model of each family; with the API they map to `claude-haiku-4-5`, `claude-sonnet-5` and `claude-opus-5`.
@@ -162,14 +162,14 @@ Available models: `haiku` (fast, default), `sonnet` (balanced), `opus` (most cap
 To pin an exact model, set `customModel` — it takes precedence over `model`:
 ```json
 {
-    "claudeCommit.customModel": "claude-opus-5-5"
+    "commitPen.customModel": "claude-opus-5-5"
 }
 ```
 
 ### Control diff source
 ```json
 {
-    "claudeCommit.diffSource": "staged"
+    "commitPen.diffSource": "staged"
 }
 ```
 Options: `auto` (default - uses staged if available, otherwise all), `staged` (only staged changes), `all` (all changes including unstaged).
@@ -177,8 +177,8 @@ Options: `auto` (default - uses staged if available, otherwise all), `staged` (o
 ### Claude Code managed mode
 ```json
 {
-    "claudeCommit.claudeCodeManaged": true,
-    "claudeCommit.preferredMethod": "cli"
+    "commitPen.claudeCodeManaged": true,
+    "commitPen.preferredMethod": "cli"
 }
 ```
 In this mode, Claude Code's haiku model generates commit messages with minimal intervention. Only a language hint is provided. Requires CLI method.
@@ -186,9 +186,9 @@ In this mode, Claude Code's haiku model generates commit messages with minimal i
 ### Keep Co-Authored-By signature
 ```json
 {
-    "claudeCommit.claudeCodeManaged": true,
-    "claudeCommit.keepCoAuthoredBy": true,
-    "claudeCommit.preferredMethod": "cli"
+    "commitPen.claudeCodeManaged": true,
+    "commitPen.keepCoAuthoredBy": true,
+    "commitPen.preferredMethod": "cli"
 }
 ```
 Keeps the Co-Authored-By signature in commit messages. Only works in Claude Code managed mode.
@@ -196,7 +196,7 @@ Keeps the Co-Authored-By signature in commit messages. Only works in Claude Code
 ### Customize auto-close timeout
 ```json
 {
-    "claudeCommit.messageAutoCloseSeconds": 10
+    "commitPen.messageAutoCloseSeconds": 10
 }
 ```
 Set to `0` to disable auto-close and keep the success message visible until manually dismissed. After the timeout the message moves to the Notification Center, where its buttons still work.
@@ -204,20 +204,20 @@ Set to `0` to disable auto-close and keep the success message visible until manu
 ### Hide the success message
 ```json
 {
-    "claudeCommit.showSuccessMessage": false
+    "commitPen.showSuccessMessage": false
 }
 ```
 Only the progress notification is shown while Claude is working, and it disappears as soon as the commit message is ready. Errors are still reported.
 
 ### Privacy mode for temporary files
-`claudeCommit.privacyMode` is deprecated and has no effect: since 1.0.20 the prompt is passed to the CLI via stdin and never touches disk.
+`commitPen.privacyMode` is deprecated and has no effect: since 1.0.20 the prompt is passed to the CLI via stdin and never touches disk.
 
 ### Commit message styles
 
 #### Conventional Commits (default)
 ```json
 {
-    "claudeCommit.commitStyle": "conventional"
+    "commitPen.commitStyle": "conventional"
 }
 ```
 Generates: `feat(auth): added user login`
@@ -225,7 +225,7 @@ Generates: `feat(auth): added user login`
 #### Prefix only (without scope)
 ```json
 {
-    "claudeCommit.commitStyle": "prefix"
+    "commitPen.commitStyle": "prefix"
 }
 ```
 Generates: `feat: added user login`
@@ -233,7 +233,7 @@ Generates: `feat: added user login`
 #### Simple description (no prefix)
 ```json
 {
-    "claudeCommit.commitStyle": "default"
+    "commitPen.commitStyle": "default"
 }
 ```
 Generates: `added user login`
@@ -241,8 +241,8 @@ Generates: `added user login`
 #### Custom prompt template
 ```json
 {
-    "claudeCommit.commitStyle": "custom",
-    "claudeCommit.customPromptTemplate": "Generate a concise commit message following our team's style.\n\nChanges:\n{stats}\n\nDiff (first 6000 chars):\n{diff}\n\nFormat: <category>: <description>\nCategories: feature, bugfix, refactor, docs, test, chore\nReturn only the commit message."
+    "commitPen.commitStyle": "custom",
+    "commitPen.customPromptTemplate": "Generate a concise commit message following our team's style.\n\nChanges:\n{stats}\n\nDiff (first 6000 chars):\n{diff}\n\nFormat: <category>: <description>\nCategories: feature, bugfix, refactor, docs, test, chore\nReturn only the commit message."
 }
 ```
 Use `{diff}` for git diff content (automatically limited to first 6000 characters) and `{stats}` for change statistics. This allows complete control over the prompt sent to Claude.
@@ -277,7 +277,7 @@ Commit Pen uses auto-detection to find Claude CLI **at runtime** without modifyi
 
 3. **Configure the path in settings** (only if needed):
    - Open VS Code Settings (Cmd+, or Ctrl+,)
-   - Search for "claudeCommit.cliPath"
+   - Search for "commitPen.cliPath"
    - Paste the path from step 2
    - **Note**: Leave this empty for automatic runtime detection (recommended for WSL users)
 
@@ -299,7 +299,7 @@ Commit Pen uses auto-detection to find Claude CLI **at runtime** without modifyi
    ```
 
 6. **Common issues**:
-   - **WSL users**: Keep `claudeCommit.cliPath` empty to allow runtime detection in both Windows and WSL
+   - **WSL users**: Keep `commitPen.cliPath` empty to allow runtime detection in both Windows and WSL
    - **NVM users**: Auto-detection supports NVM paths via shell profile sourcing
    - **macOS**: The extension loads shell profiles to find paths
    - **Windows**: Checks the native installer (`~/.local/bin/claude.exe`) and common npm installation directories
@@ -311,7 +311,7 @@ Commit Pen uses auto-detection to find Claude CLI **at runtime** without modifyi
 3. Try using API method as fallback:
    - Get API key from https://console.anthropic.com/
    - Run **Commit Pen: Set Anthropic API Key**
-   - Set `claudeCommit.preferredMethod` to `api`
+   - Set `commitPen.preferredMethod` to `api`
 
 ### Extension not working
 
@@ -324,7 +324,7 @@ Commit Pen uses auto-detection to find Claude CLI **at runtime** without modifyi
 4. Try generating a commit message manually via Command Palette:
    - Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
    - Type "Commit Pen: Generate"
-5. If CLI path is incorrect, clear `claudeCommit.cliPath` in settings to trigger re-detection
+5. If CLI path is incorrect, clear `commitPen.cliPath` in settings to trigger re-detection
 
 ### "Empty response from CLI" error
 
@@ -394,7 +394,7 @@ docs(readme): updated installation instructions
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome in the [issue tracker](https://github.com/uaoa/claude-commit-vscode/issues).
+Bug reports, ideas and pull requests are welcome in the [issue tracker](https://github.com/uaoa/commit-pen/issues).
 
 ## Author
 

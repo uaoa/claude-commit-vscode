@@ -23,7 +23,7 @@ const CLI_SPEEDUP_ENV: Record<string, string> = {
   MAX_THINKING_TOKENS: "0",
 };
 
-// API model IDs for the `claudeCommit.model` presets
+// API model IDs for the `commitPen.model` presets
 const API_MODELS: Record<Model, string> = {
   haiku: "claude-haiku-4-5",
   sonnet: "claude-sonnet-5",
@@ -31,8 +31,8 @@ const API_MODELS: Record<Model, string> = {
 };
 
 /**
- * `claudeCommit.customModel` (an exact model ID or CLI alias) wins over the
- * `claudeCommit.model` preset.
+ * `commitPen.customModel` (an exact model ID or CLI alias) wins over the
+ * `commitPen.model` preset.
  */
 function getModelSetting(config: vscode.WorkspaceConfiguration): { preset: Model; custom: string } {
   return {
@@ -47,7 +47,7 @@ const BASE_CLI_ARGS = ["-p", "--no-session-persistence", "--tools", "", "--effor
 // away from the commit message. Does NOT use --setting-sources "": that also
 // blocks the `user` source, which is where the CLI reads its login/auth
 // state, breaking generation with "Not logged in" even for authenticated
-// users (https://github.com/uaoa/claude-commit-vscode/issues/20).
+// users (https://github.com/uaoa/commit-pen/issues/20).
 const ISOLATION_ARGS = ["--strict-mcp-config"];
 
 // null = not probed yet.
@@ -243,7 +243,7 @@ export async function generateWithCLI(
 
   log(`Found Claude CLI at: ${cliPath}`);
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   const { preset, custom } = getModelSetting(config);
   const model = custom || preset;
 
@@ -343,7 +343,7 @@ export async function generateWithAPI(
   progressCallback: ProgressCallback | null = null,
   signal?: AbortSignal
 ): Promise<string> {
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   const apiKey = await getApiKey();
 
   if (!apiKey) {
@@ -391,7 +391,7 @@ export async function generateWithAPI(
       throw new Error("Rate limit exceeded. Please wait and try again.");
     }
     if (error instanceof sdk.NotFoundError) {
-      throw new Error(`Model not found: ${apiModel}. Check claudeCommit.model / claudeCommit.customModel.`);
+      throw new Error(`Model not found: ${apiModel}. Check commitPen.model / commitPen.customModel.`);
     }
     throw error;
   }

@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import { log } from "./logger";
 
-const SECRET_KEY = "claudeCommit.apiKey";
-const MIGRATION_PROMPTED_KEY = "claudeCommit.apiKeyMigrationPrompted";
+const SECRET_KEY = "commitPen.apiKey";
+const MIGRATION_PROMPTED_KEY = "commitPen.apiKeyMigrationPrompted";
 
 let secrets: vscode.SecretStorage | undefined;
 
@@ -22,11 +22,11 @@ async function readSecret(): Promise<string | undefined> {
 
 /**
  * Resolution order: OS secret storage (set via the "Set Anthropic API Key"
- * command) → `claudeCommit.apiKey` setting (legacy, still honored) →
+ * command) → `commitPen.apiKey` setting (legacy, still honored) →
  * ANTHROPIC_API_KEY environment variable.
  */
 export async function getApiKey(): Promise<string | undefined> {
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   return (await readSecret()) || config.get<string>("apiKey") || process.env.ANTHROPIC_API_KEY || undefined;
 }
 
@@ -70,7 +70,7 @@ export async function suggestApiKeyMigration(context: vscode.ExtensionContext): 
     return;
   }
 
-  const config = vscode.workspace.getConfiguration("claudeCommit");
+  const config = vscode.workspace.getConfiguration("commitPen");
   const settingKey = config.inspect<string>("apiKey")?.globalValue?.trim();
   if (!settingKey || (await readSecret())) {
     return;
